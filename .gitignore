@@ -1,0 +1,186 @@
+# ==================== Build & Binaries ====================
+# Compiled binaries
+bin/
+build/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.a
+*.out
+
+# ==================== Go ====================
+# Dependency directories
+vendor/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Test coverage
+*.cover
+*.prof
+coverage.out
+coverage.html
+
+# Go workspace file
+go.work
+
+# ==================== Environment & Configuration ====================
+# Environment files - NEVER commit these!
+.env
+.env.local
+.env.*.local
+.env.prod
+.env.test
+
+# Configuration files with secrets
+config.local.yaml
+config.prod.yaml
+
+# ==================== IDE & Editors ====================
+# JetBrains IDEs (IntelliJ, GoLand, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# VS Code temp files
+.history/
+
+# ==================== Operating System ====================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+
+# ==================== Temporary & Log Files ====================
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+
+# Log files
+*.log
+logs/
+debug.log
+app.log
+
+# Database files (if using SQLite locally)
+*.db
+*.sqlite
+*.sqlite3
+
+# ==================== Tools & Dependencies ====================
+# golangci-lint
+.golangci-lint.yml
+.golangci.yml
+
+# Migration tool locks
+db_lock
+
+# ==================== Project Specific ====================
+# Accidentally created files
+nul
+
+# Database dumps for testing
+*.sql.gz
+*.sql.backup
+
+# Local test data
+test_data/
+fixtures/
+
+# Generated documentation
+docs/_site/
+docs/.jekyll-cache/
+
+# ==================== Claude Code & AI Assistants ====================
+# Claude Code workspace files
+.claude/
+claude.code-workspace
+
+# Cursor AI specific
+.cursor/
+
+# Copilot cache
+.copilot/
+
+# Other AI assistant caches
+.ai-cache/
+
+# ==================== CI/CD ====================
+# GitHub Actions
+.github/workflows/.cache/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# ==================== Don't Ignore ====================
+# These files should NOT be ignored - explicitly include them
+# Use patterns like: !filename.txt
+
+# Documentation (MUST keep)
+!README.md
+CLAUDE.md
+!.env.example
+
+# Configuration templates (MUST keep)
+!configs/
+
+# Database migrations (MUST keep)
+!migrations/
+!migrations/*.sql
+
+# Source code (MUST keep)
+!*.go
+
+# Go module files (MUST keep)
+!go.mod
+!go.sum
+
+# Build scripts (MUST keep)
+!Makefile
+!*.sh
+
+# License and config files (MUST keep)
+!LICENSE
+!.gitignore
+!.gitattributes
