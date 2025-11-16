@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/rand"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -98,91 +99,24 @@ func StringInSlice(str string, slice []string) bool {
 	return false
 }
 
-// CalculateDistance calculates approximate distance in km using Haversine formula
+// CalculateDistance calculates distance in km using Haversine formula
 func CalculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
 	const earthRadiusKm = 6371.0
 
-	lat1Rad := degreesToRadians(lat1)
-	lat2Rad := degreesToRadians(lat2)
-	deltaLat := degreesToRadians(lat2 - lat1)
-	deltaLon := degreesToRadians(lon2 - lon1)
+	// Convert to radians
+	lat1Rad := lat1 * math.Pi / 180
+	lat2Rad := lat2 * math.Pi / 180
+	deltaLat := (lat2 - lat1) * math.Pi / 180
+	deltaLon := (lon2 - lon1) * math.Pi / 180
 
-	a := haversine(deltaLat) + cosine(lat1Rad)*cosine(lat2Rad)*haversine(deltaLon)
-	c := 2 * asin(squareRoot(a))
+	// Haversine formula
+	a := math.Sin(deltaLat/2)*math.Sin(deltaLat/2) +
+		math.Cos(lat1Rad)*math.Cos(lat2Rad)*
+			math.Sin(deltaLon/2)*math.Sin(deltaLon/2)
+
+	c := 2 * math.Asin(math.Sqrt(a))
 
 	return earthRadiusKm * c
-}
-
-func degreesToRadians(degrees float64) float64 {
-	return degrees * 3.14159265359 / 180
-}
-
-func cosine(rad float64) float64 {
-	// Approximate cosine using Taylor series
-	x := rad
-	result := 1.0
-	term := 1.0
-	for i := 1; i < 10; i++ {
-		term *= -x * x / (float64(2*i*(2*i-1)))
-		result += term
-	}
-	return result
-}
-
-func haversine(delta float64) float64 {
-	return sinePower(delta / 2)
-}
-
-func sinePower(rad float64) float64 {
-	return sine(rad) * sine(rad)
-}
-
-func sine(rad float64) float64 {
-	// Approximate sine using Taylor series
-	x := rad
-	result := x
-	term := x
-	for i := 1; i < 10; i++ {
-		term *= -x * x / (float64((2*i + 1) * (2 * i)))
-		result += term
-	}
-	return result
-}
-
-func squareRoot(x float64) float64 {
-	if x == 0 {
-		return 0
-	}
-	z := x
-	for i := 0; i < 10; i++ {
-		z = (z + x/z) / 2
-	}
-	return z
-}
-
-func asin(x float64) float64 {
-	// Clamp x to [-1, 1]
-	if x > 1 {
-		x = 1
-	} else if x < -1 {
-		x = -1
-	}
-	return atan(x / squareRoot(1-x*x))
-}
-
-func atan(x float64) float64 {
-	// Approximate arctangent using Taylor series
-	result := 0.0
-	power := x
-	sign := 1.0
-
-	for i := 1; i < 20; i += 2 {
-		result += sign * power / float64(i)
-		power *= x * x
-		sign *= -1
-	}
-
-	return result
 }
 
 // Ternary operator simulation

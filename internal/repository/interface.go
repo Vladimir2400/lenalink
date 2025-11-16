@@ -43,51 +43,34 @@ type BookingRepository interface {
 	// Delete removes a booking
 	Delete(ctx context.Context, id string) error
 
-	// FindByRouteID retrieves bookings for a specific route
-	FindByRouteID(ctx context.Context, routeID string) ([]domain.Booking, error)
+	// FindByPassenger finds bookings by passenger email
+	FindByPassenger(ctx context.Context, email string) ([]domain.Booking, error)
+
+	// FindByStatus finds bookings by status
+	FindByStatus(ctx context.Context, status domain.BookingStatus) ([]domain.Booking, error)
 }
 
-// TicketRepository defines operations for ticket persistence
-type TicketRepository interface {
-	// FindByBookingID retrieves all tickets for a booking
-	FindByBookingID(ctx context.Context, bookingID string) ([]domain.BookingSegmentTicket, error)
-
-	// FindByID retrieves a ticket by ID
-	FindByID(ctx context.Context, id string) (*domain.BookingSegmentTicket, error)
-
-	// Save stores a new ticket
-	Save(ctx context.Context, ticket *domain.BookingSegmentTicket) error
-
-	// Update modifies an existing ticket
-	Update(ctx context.Context, ticket *domain.BookingSegmentTicket) error
-
-	// Delete removes a ticket
-	Delete(ctx context.Context, id string) error
-}
-
-// Transaction defines ACID transaction operations
+// Transaction represents a database transaction for ACID guarantees
 type Transaction interface {
 	// Commit commits the transaction
-	Commit(ctx context.Context) error
+	Commit() error
 
 	// Rollback rolls back the transaction
-	Rollback(ctx context.Context) error
+	Rollback() error
 
-	// GetBookingRepository returns booking repository for this transaction
-	GetBookingRepository() BookingRepository
+	// RouteRepository returns a route repository within this transaction
+	RouteRepository() RouteRepository
 
-	// GetTicketRepository returns ticket repository for this transaction
-	GetTicketRepository() TicketRepository
-
-	// GetRouteRepository returns route repository for this transaction
-	GetRouteRepository() RouteRepository
+	// BookingRepository returns a booking repository within this transaction
+	BookingRepository() BookingRepository
 }
 
-// TransactionManager defines transaction lifecycle management
+// TransactionManager manages database transactions
 type TransactionManager interface {
-	// BeginTx starts a new transaction
-	BeginTx(ctx context.Context) (Transaction, error)
+	// Begin starts a new transaction
+	Begin(ctx context.Context) (Transaction, error)
 
-	// WithTx executes a function within a transaction
-	WithTx(ctx context.Context, fn func(tx Transaction) error) error
+	// WithTransaction executes a function within a transaction
+	// Automatically commits on success, rolls back on error
+	WithTransaction(ctx context.Context, fn func(tx Transaction) error) error
 }

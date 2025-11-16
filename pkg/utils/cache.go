@@ -19,20 +19,24 @@ func (ci *CacheItem) IsExpired() bool {
 
 // Cache represents an in-memory cache with TTL support
 type Cache struct {
-	mu       sync.RWMutex
-	items    map[string]*CacheItem
-	ttl      time.Duration
-	maxSize  int
+	mu              sync.RWMutex
+	items           map[string]*CacheItem
+	ttl             time.Duration
+	maxSize         int
 	cleanupInterval time.Duration
+	stopChan        chan struct{}
+	stopped         bool
 }
 
 // NewCache creates a new cache instance
 func NewCache(ttl time.Duration, maxSize int) *Cache {
 	cache := &Cache{
-		items:   make(map[string]*CacheItem),
-		ttl:     ttl,
-		maxSize: maxSize,
+		items:           make(map[string]*CacheItem),
+		ttl:             ttl,
+		maxSize:         maxSize,
 		cleanupInterval: 5 * time.Minute,
+		stopChan:        make(chan struct{}),
+		stopped:         false,
 	}
 
 	// Start background cleanup goroutine
@@ -135,14 +139,31 @@ func (c *Cache) cleanupExpired() {
 	ticker := time.NewTicker(c.cleanupInterval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		c.mu.Lock()
-		for key, item := range c.items {
-			if item.IsExpired() {
-				delete(c.items, key)
+	for {
+		select {
+		case <-c.stopChan:
+			// Graceful shutdown
+			return
+		case <-ticker.C:
+			c.mu.Lock()
+			for key, item := range c.items {
+				if item.IsExpired() {
+					delete(c.items, key)
+				}
 			}
+			c.mu.Unlock()
 		}
-		c.mu.Unlock()
+	}
+}
+
+// Stop gracefully stops the cleanup goroutine
+func (c *Cache) Stop() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if !c.stopped {
+		close(c.stopChan)
+		c.stopped = true
 	}
 }
 

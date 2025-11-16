@@ -1,0 +1,2 @@
+-- Drop BOOKINGS table
+DROP TABLE IF EXISTS bookings CASCADE;

@@ -10,6 +10,8 @@ const (
 	TransportRail   TransportType = "rail"
 	TransportBus    TransportType = "bus"
 	TransportRiver  TransportType = "river"
+	TransportTaxi   TransportType = "taxi"
+	TransportWalk   TransportType = "walk"
 )
 
 // Stop represents a location on a route

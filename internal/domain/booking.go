@@ -2,92 +2,141 @@ package domain
 
 import "time"
 
-// PassengerType defines the type of passenger
-type PassengerType string
-
-const (
-	PassengerAdult   PassengerType = "adult"
-	PassengerChild   PassengerType = "child"
-	PassengerInfant  PassengerType = "infant"
-)
-
-// BookingStatus represents booking status
+// BookingStatus represents the status of a booking
 type BookingStatus string
 
 const (
-	BookingStatusPending     BookingStatus = "pending"
-	BookingStatusConfirmed   BookingStatus = "confirmed"
-	BookingStatusFailed      BookingStatus = "failed"
-	BookingStatusCancelled   BookingStatus = "cancelled"
+	BookingPending   BookingStatus = "pending"    // Awaiting payment
+	BookingConfirmed BookingStatus = "confirmed"  // Payment successful, all segments booked
+	BookingFailed    BookingStatus = "failed"     // Booking or payment failed
+	BookingCancelled BookingStatus = "cancelled"  // User cancelled
+	BookingRefunded  BookingStatus = "refunded"   // Refund processed
 )
 
-// Passenger represents a person traveling
+// PaymentStatus represents the status of a payment
+type PaymentStatus string
+
+const (
+	PaymentPending   PaymentStatus = "pending"
+	PaymentCompleted PaymentStatus = "completed"
+	PaymentFailed    PaymentStatus = "failed"
+	PaymentRefunded  PaymentStatus = "refunded"
+)
+
+// PaymentMethod represents payment method
+type PaymentMethod string
+
+const (
+	PaymentCard       PaymentMethod = "card"
+	PaymentYooKassa   PaymentMethod = "yookassa"
+	PaymentCloudPay   PaymentMethod = "cloudpay"
+	PaymentSberPay    PaymentMethod = "sberpay"
+)
+
+// Passenger represents a passenger
 type Passenger struct {
-	ID             string        `json:"id"`
-	FirstName      string        `json:"first_name"`
-	LastName       string        `json:"last_name"`
-	MiddleName     string        `json:"middle_name,omitempty"`
-	DateOfBirth    time.Time     `json:"date_of_birth"`
-	PassportNumber string        `json:"passport_number"`
-	PassportSeries string        `json:"passport_series"`
-	Nationality    string        `json:"nationality"`
-	Type           PassengerType `json:"type"`
-	Email          string        `json:"email,omitempty"`
-	Phone          string        `json:"phone,omitempty"`
+	FirstName      string    `json:"first_name"`
+	LastName       string    `json:"last_name"`
+	MiddleName     string    `json:"middle_name,omitempty"`
+	DateOfBirth    time.Time `json:"date_of_birth"`
+	PassportNumber string    `json:"passport_number"`
+	Email          string    `json:"email"`
+	Phone          string    `json:"phone"`
 }
 
-// BookingSegmentTicket represents a ticket for one segment
-type BookingSegmentTicket struct {
+// BookedSegment represents a single booked segment in a multi-segment journey
+type BookedSegment struct {
 	ID              string        `json:"id"`
-	BookingID       string        `json:"booking_id"`
-	SegmentID       string        `json:"segment_id"`
-	PassengerID     string        `json:"passenger_id"`
-	Provider        string        `json:"provider"`
-	TicketNumber    string        `json:"ticket_number"`
-	SeatNumber      string        `json:"seat_number"`
-	Price           float64       `json:"price"`
-	Status          string        `json:"status"`
+	SegmentID       string        `json:"segment_id"`       // Reference to original segment
+	Provider        string        `json:"provider"`         // Provider who issued ticket
+	TransportType   TransportType `json:"transport_type"`
+	From            Stop          `json:"from"`
+	To              Stop          `json:"to"`
+	DepartureTime   time.Time     `json:"departure_time"`
+	ArrivalTime     time.Time     `json:"arrival_time"`
+	TicketNumber    string        `json:"ticket_number"`    // Ticket issued by provider
+	Price           float64       `json:"price"`            // Provider's price
+	Commission      float64       `json:"commission"`       // Our markup
+	TotalPrice      float64       `json:"total_price"`      // price + commission
+	BookingStatus   BookingStatus `json:"booking_status"`
+	ProviderBookingRef string     `json:"provider_booking_ref"` // Provider's booking reference
+}
+
+// Payment represents a payment transaction
+type Payment struct {
+	ID              string        `json:"id"`
+	OrderID         string        `json:"order_id"`
+	Amount          float64       `json:"amount"`
+	Currency        string        `json:"currency"`
+	Method          PaymentMethod `json:"method"`
+	Status          PaymentStatus `json:"status"`
+	ProviderPaymentID string      `json:"provider_payment_id"` // Payment gateway transaction ID
 	CreatedAt       time.Time     `json:"created_at"`
+	CompletedAt     *time.Time    `json:"completed_at,omitempty"`
+	FailureReason   string        `json:"failure_reason,omitempty"`
 }
 
-// BookingGuarantee contains guarantee and support information
-type BookingGuarantee struct {
-	GuaranteeID    string    `json:"guarantee_id"`
-	BookingID      string    `json:"booking_id"`
-	ValidUntil     time.Time `json:"valid_until"`
-	RefundPolicy   string    `json:"refund_policy"`
-	SOSHotline     string    `json:"sos_hotline"`
-	InsuranceLevel string    `json:"insurance_level"`
-	CoverageAmount float64   `json:"coverage_amount"`
-	CreatedAt      time.Time `json:"created_at"`
-}
-
-// Booking represents a complete booking
+// Booking represents a complete multi-segment booking
 type Booking struct {
-	ID                   string                   `json:"id"`
-	RouteID              string                   `json:"route_id"`
-	Passengers           []Passenger              `json:"passengers"`
-	Tickets              []BookingSegmentTicket   `json:"tickets"`
-	TotalPrice           float64                  `json:"total_price"`
-	InsurancePremium     float64                  `json:"insurance_premium"`
-	InsuranceIncluded    bool                     `json:"insurance_included"`
-	Guarantee            *BookingGuarantee        `json:"guarantee,omitempty"`
-	Status               BookingStatus            `json:"status"`
-	BookedAt             time.Time                `json:"booked_at"`
-	PaymentDeadline      time.Time                `json:"payment_deadline"`
-	CancellationDeadline time.Time                `json:"cancellation_deadline"`
-	Notes                string                   `json:"notes,omitempty"`
+	ID                string          `json:"id"` // Order ID
+	RouteID           string          `json:"route_id"`
+	Passenger         Passenger       `json:"passenger"`
+	Segments          []BookedSegment `json:"segments"`
+	TotalPrice        float64         `json:"total_price"`        // Sum of all segment prices
+	TotalCommission   float64         `json:"total_commission"`   // Sum of all commissions
+	GrandTotal        float64         `json:"grand_total"`        // totalPrice + totalCommission
+	InsurancePremium  float64         `json:"insurance_premium,omitempty"`
+	IncludeInsurance  bool            `json:"include_insurance"`
+	Status            BookingStatus   `json:"status"`
+	Payment           *Payment        `json:"payment,omitempty"`
+	CreatedAt         time.Time       `json:"created_at"`
+	UpdatedAt         time.Time       `json:"updated_at"`
+	ConfirmedAt       *time.Time      `json:"confirmed_at,omitempty"`
+	CancelledAt       *time.Time      `json:"cancelled_at,omitempty"`
+	CancellationReason string         `json:"cancellation_reason,omitempty"`
 }
 
-// BookingCreateRequest represents request to create booking
-type BookingCreateRequest struct {
-	RouteID          string      `json:"route_id"`
-	Passengers       []Passenger `json:"passengers"`
-	IncludeInsurance bool        `json:"include_insurance"`
+// AddSegment adds a booked segment to the booking
+func (b *Booking) AddSegment(segment BookedSegment) {
+	b.Segments = append(b.Segments, segment)
+	b.TotalPrice += segment.Price
+	b.TotalCommission += segment.Commission
+	b.GrandTotal = b.TotalPrice + b.TotalCommission
+	if b.IncludeInsurance {
+		b.GrandTotal += b.InsurancePremium
+	}
 }
 
-// BookingCreateResult represents result of booking creation
-type BookingCreateResult struct {
-	Booking *Booking
-	Error   error
+// MarkAsConfirmed marks booking as confirmed
+func (b *Booking) MarkAsConfirmed() {
+	b.Status = BookingConfirmed
+	now := time.Now()
+	b.ConfirmedAt = &now
+	b.UpdatedAt = now
+}
+
+// MarkAsFailed marks booking as failed
+func (b *Booking) MarkAsFailed(reason string) {
+	b.Status = BookingFailed
+	b.CancellationReason = reason
+	b.UpdatedAt = time.Now()
+}
+
+// MarkAsCancelled marks booking as cancelled
+func (b *Booking) MarkAsCancelled(reason string) {
+	b.Status = BookingCancelled
+	now := time.Now()
+	b.CancelledAt = &now
+	b.CancellationReason = reason
+	b.UpdatedAt = now
+}
+
+// AllSegmentsBooked checks if all segments are successfully booked
+func (b *Booking) AllSegmentsBooked() bool {
+	for _, segment := range b.Segments {
+		if segment.BookingStatus != BookingConfirmed {
+			return false
+		}
+	}
+	return len(b.Segments) > 0
 }

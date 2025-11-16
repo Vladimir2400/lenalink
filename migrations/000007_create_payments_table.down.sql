@@ -1,0 +1,2 @@
+-- Drop PAYMENTS table
+DROP TABLE IF EXISTS payments CASCADE;

@@ -1,24 +1,34 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/joho/godotenv"
+	httphandler "github.com/lenalink/backend/internal/handler/http"
 	"github.com/lenalink/backend/internal/config"
-	"github.com/lenalink/backend/internal/infrastructure/logger"
-	"github.com/lenalink/backend/internal/repository/memory"
+	postgres "github.com/lenalink/backend/internal/repository/postgres"
 	"github.com/lenalink/backend/internal/service"
+	"github.com/lenalink/backend/pkg/utils"
 )
 
 const (
-	AppName    = "LenaLink Backend"
-	AppVersion = "0.2.0"
+	AppName    = "LenaLink"
+	AppVersion = "0.5.0"
 )
 
 func main() {
+	// Load .env file (ignore error if file doesn't exist)
+	_ = godotenv.Load()
+
+	log.Println("🚀 Starting LenaLink Backend...")
+
 	// Load configuration
 	cfg := config.Load()
 
@@ -27,108 +37,112 @@ func main() {
 		log.Fatalf("Configuration error: %v", err)
 	}
 
-	// Initialize logger
-	logger := logger.New(cfg.Logger.Level)
-	logger.Info("Starting %s v%s", AppName, AppVersion)
-	logger.Info("========================================")
-
-	// Print configuration
+	// Print banner
 	fmt.Printf("\n%s v%s\n", AppName, AppVersion)
-	fmt.Println("Multi-modal Ticket Service for Yakutia")
+	fmt.Println("Multi-modal Transport Aggregator with Unified Booking")
 	fmt.Println("========================================\n")
 
-	logger.Info("Database driver: %s", cfg.Database.Driver)
-	logger.Info("Server: %s:%d", cfg.Server.Host, cfg.Server.Port)
-	logger.Info("Logger level: %s", cfg.Logger.Level)
+	log.Printf("Database driver: %s", cfg.Database.Driver)
+	log.Printf("Server: %s:%d", cfg.Server.Host, cfg.Server.Port)
+	log.Printf("Logger level: %s", cfg.Logger.Level)
 
-	// Initialize repositories (in-memory for now)
-	logger.Info("Initializing repositories...")
-	routeRepo := memory.NewRouteRepository()
-	bookingRepo := memory.NewBookingRepository()
-	// ticketRepo and txManager will be initialized when PostgreSQL support is added
-	// For now, using nil values for demonstration
+	// Connect to PostgreSQL
+	log.Println("📦 Connecting to PostgreSQL...")
+	db, err := postgres.NewDatabase(cfg.Database)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+	log.Println("✓ PostgreSQL connected")
+
+	// Run migrations
+	log.Println("🔄 Running database migrations...")
+	if err := postgres.RunMigrations(db.DB()); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+	log.Println("✓ Migrations completed")
+
+	// Initialize cache
+	log.Println("💾 Initializing cache...")
+	routeCache := utils.NewCache(10*time.Minute, 1000)
+	defer routeCache.Stop()
+	log.Println("✓ Cache initialized")
+
+	// Initialize PostgreSQL repositories
+	log.Println("🗄️  Initializing repositories...")
+	routeRepo := postgres.NewRouteRepository(db)
+	bookingRepo := postgres.NewBookingRepository(db)
+	log.Println("✓ Repositories initialized")
 
 	// Initialize services
-	logger.Info("Initializing services...")
-	insuranceServ := service.NewInsuranceService()
-	routeServ := service.NewRouteService(routeRepo)
-	_ = routeServ  // Suppress unused warning for now
-	// bookingServ := service.NewBookingService(bookingRepo, ticketRepo, routeRepo, txManager, insuranceServ)
-	_ = bookingRepo // Suppress unused warning
-	_ = insuranceServ // Suppress unused warning
+	log.Println("⚙️  Initializing services...")
+	routeService := service.NewRouteService(routeRepo)
+	commissionSvc := service.NewCommissionService(service.DefaultCommissionConfig())
+	insuranceSvc := service.NewInsuranceService(service.DefaultInsuranceConfig())
+	paymentSvc := service.NewPaymentService(service.NewMockPaymentGateway(0.0))
+	providerBooking := service.NewMockProviderBookingService(0.0)
+	bookingService := service.NewBookingService(
+		routeRepo,
+		bookingRepo,
+		commissionSvc,
+		insuranceSvc,
+		paymentSvc,
+		providerBooking,
+	)
+	log.Println("✓ Services initialized")
 
-	// Log successful initialization
-	logger.Info("Services initialized successfully")
-	logger.Info("========================================\n")
+	// Initialize router with handlers
+	log.Println("🛣️  Setting up HTTP routes...")
+	router := httphandler.NewRouter(routeService, bookingService)
+	log.Println("✓ HTTP routes configured")
 
-	// Graceful shutdown handling
+	// Server configuration
+	server := &http.Server{
+		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
+		Handler:      router,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+		IdleTimeout:  cfg.Server.ShutdownTimeout,
+	}
+
+	// Channel for shutdown signals
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	logger.Info("Application started. Press Ctrl+C to shutdown.")
-
-	// TODO: Initialize HTTP server with routes
-	// router := setupRouter(cfg, logger, routeServ, bookingServ)
-	// if err := router.Start(cfg.Server.Host, cfg.Server.Port); err != nil {
-	// 	logger.Error("Server error: %v", err)
-	// 	os.Exit(1)
-	// }
+	// Start server in a goroutine
+	go func() {
+		log.Printf("🌐 HTTP server listening on http://%s\n", server.Addr)
+		log.Println("📝 Health check: GET /health")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
 
 	// Log service availability
-	logger.Info("Route Service: Ready")
-	logger.Info("Booking Service: Ready")
-	logger.Info("Insurance Service: Ready")
-	logger.Info("HTTP Server: Ready (ready for handler implementation)")
+	log.Println("========================================")
+	log.Println("✓ Route Service: Ready (graph-based pathfinding)")
+	log.Println("✓ Booking Service: Ready (multi-segment + ACID)")
+	log.Println("✓ Commission Service: Ready (5-15% markup)")
+	log.Println("✓ Insurance Service: Ready (5% base premium)")
+	log.Println("✓ Payment Service: Ready (mock gateway)")
+	log.Println("✓ HTTP Server: Ready (listening)")
+	log.Println("========================================\n")
 
-	// Keep application running
-	<-sigChan
+	// Wait for shutdown signal
+	sig := <-sigChan
+	log.Printf("\n⛔ Received signal: %v\n", sig)
 
-	logger.Info("Shutdown signal received")
-	// ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
-	// defer cancel()
+	// Graceful shutdown with timeout
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+	defer cancel()
 
-	// TODO: Gracefully shutdown server
-	// if err := router.Shutdown(ctx); err != nil {
-	// 	logger.Error("Server shutdown error: %v", err)
-	// 	os.Exit(1)
-	// }
+	log.Println("🛑 Shutting down server gracefully...")
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Server shutdown error: %v", err)
+	}
 
-	logger.Info("Application stopped")
+	// Clean up resources
+	log.Println("🧹 Cleaning up resources...")
+	routeCache.Stop()
+	log.Println("✓ Server stopped gracefully")
 }
-
-// Mock implementations for demonstration
-// These will be replaced with real implementations later
-
-/*
-type mockTicketRepository struct{}
-
-func (m *mockTicketRepository) FindByBookingID(ctx context.Context, bookingID string) ([]interface{}, error) {
-	return nil, nil
-}
-
-func (m *mockTicketRepository) FindByID(ctx context.Context, id string) (interface{}, error) {
-	return nil, nil
-}
-
-func (m *mockTicketRepository) Save(ctx context.Context, ticket interface{}) error {
-	return nil
-}
-
-func (m *mockTicketRepository) Update(ctx context.Context, ticket interface{}) error {
-	return nil
-}
-
-func (m *mockTicketRepository) Delete(ctx context.Context, id string) error {
-	return nil
-}
-
-type mockTransactionManager struct{}
-
-func (m *mockTransactionManager) BeginTx(ctx context.Context) (interface{}, error) {
-	return nil, nil
-}
-
-func (m *mockTransactionManager) WithTx(ctx context.Context, fn func(interface{}) error) error {
-	return nil
-}
-*/

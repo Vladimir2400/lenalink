@@ -1,0 +1,2 @@
+-- Drop BOOKED_SEGMENTS table
+DROP TABLE IF EXISTS booked_segments CASCADE;

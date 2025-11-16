@@ -1,0 +1,2 @@
+-- Drop SEGMENTS table
+DROP TABLE IF EXISTS segments CASCADE;
