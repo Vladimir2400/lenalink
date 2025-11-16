@@ -1,0 +1,2 @@
+-- Drop CONNECTIONS table
+DROP TABLE IF EXISTS connections CASCADE;

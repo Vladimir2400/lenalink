@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
 	"github.com/lenalink/backend/internal/domain"
 	"github.com/lenalink/backend/internal/repository"
 )
 
-// BookingRepository implements BookingRepository interface using in-memory storage
+// BookingRepository is an in-memory implementation of repository.BookingRepository
 type BookingRepository struct {
 	mu       sync.RWMutex
 	bookings map[string]*domain.Booking
@@ -31,7 +32,9 @@ func (r *BookingRepository) FindByID(ctx context.Context, id string) (*domain.Bo
 		return nil, domain.ErrBookingNotFound
 	}
 
-	return booking, nil
+	// Return a copy to prevent external modification
+	bookingCopy := *booking
+	return &bookingCopy, nil
 }
 
 // FindAll retrieves all bookings
@@ -49,10 +52,6 @@ func (r *BookingRepository) FindAll(ctx context.Context) ([]domain.Booking, erro
 
 // Save stores a new booking
 func (r *BookingRepository) Save(ctx context.Context, booking *domain.Booking) error {
-	if booking == nil {
-		return domain.ErrInvalidBooking
-	}
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -60,17 +59,15 @@ func (r *BookingRepository) Save(ctx context.Context, booking *domain.Booking) e
 		return fmt.Errorf("booking with ID %s already exists", booking.ID)
 	}
 
-	r.bookings[booking.ID] = booking
+	// Store a copy to prevent external modification
+	bookingCopy := *booking
+	r.bookings[booking.ID] = &bookingCopy
 
 	return nil
 }
 
 // Update modifies an existing booking
 func (r *BookingRepository) Update(ctx context.Context, booking *domain.Booking) error {
-	if booking == nil {
-		return domain.ErrInvalidBooking
-	}
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -78,7 +75,9 @@ func (r *BookingRepository) Update(ctx context.Context, booking *domain.Booking)
 		return domain.ErrBookingNotFound
 	}
 
-	r.bookings[booking.ID] = booking
+	// Store a copy to prevent external modification
+	bookingCopy := *booking
+	r.bookings[booking.ID] = &bookingCopy
 
 	return nil
 }
@@ -93,22 +92,35 @@ func (r *BookingRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	delete(r.bookings, id)
-
 	return nil
 }
 
-// FindByRouteID retrieves bookings for a specific route
-func (r *BookingRepository) FindByRouteID(ctx context.Context, routeID string) ([]domain.Booking, error) {
+// FindByPassenger finds bookings by passenger email
+func (r *BookingRepository) FindByPassenger(ctx context.Context, email string) ([]domain.Booking, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	var results []domain.Booking
-
+	bookings := make([]domain.Booking, 0)
 	for _, booking := range r.bookings {
-		if booking.RouteID == routeID {
-			results = append(results, *booking)
+		if booking.Passenger.Email == email {
+			bookings = append(bookings, *booking)
 		}
 	}
 
-	return results, nil
+	return bookings, nil
+}
+
+// FindByStatus finds bookings by status
+func (r *BookingRepository) FindByStatus(ctx context.Context, status domain.BookingStatus) ([]domain.Booking, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	bookings := make([]domain.Booking, 0)
+	for _, booking := range r.bookings {
+		if booking.Status == status {
+			bookings = append(bookings, *booking)
+		}
+	}
+
+	return bookings, nil
 }

@@ -1,0 +1,2 @@
+-- Drop ROUTES table
+DROP TABLE IF EXISTS routes CASCADE;

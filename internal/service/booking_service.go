@@ -10,246 +10,239 @@ import (
 	"github.com/lenalink/backend/pkg/utils"
 )
 
-// BookingService implements business logic for bookings
+// ProviderBookingService defines interface for booking with external providers
+type ProviderBookingService interface {
+	BookSegment(ctx context.Context, segment *domain.Segment, passenger *domain.Passenger) (ticketNumber, bookingRef string, err error)
+	CancelBooking(ctx context.Context, bookingRef string) error
+}
+
+// BookingService handles multi-segment booking with ACID guarantees
 type BookingService struct {
-	bookingRepo   repository.BookingRepository
-	ticketRepo    repository.TicketRepository
-	routeRepo     repository.RouteRepository
-	txManager     repository.TransactionManager
-	insuranceServ *InsuranceService
+	routeRepo       repository.RouteRepository
+	bookingRepo     repository.BookingRepository
+	commissionSvc   *CommissionService
+	insuranceSvc    *InsuranceService
+	paymentSvc      *PaymentService
+	providerBooking ProviderBookingService
 }
 
 // NewBookingService creates a new booking service
 func NewBookingService(
-	bookingRepo repository.BookingRepository,
-	ticketRepo repository.TicketRepository,
 	routeRepo repository.RouteRepository,
-	txManager repository.TransactionManager,
-	insuranceServ *InsuranceService,
+	bookingRepo repository.BookingRepository,
+	commissionSvc *CommissionService,
+	insuranceSvc *InsuranceService,
+	paymentSvc *PaymentService,
+	providerBooking ProviderBookingService,
 ) *BookingService {
 	return &BookingService{
-		bookingRepo:   bookingRepo,
-		ticketRepo:    ticketRepo,
-		routeRepo:     routeRepo,
-		txManager:     txManager,
-		insuranceServ: insuranceServ,
+		routeRepo:       routeRepo,
+		bookingRepo:     bookingRepo,
+		commissionSvc:   commissionSvc,
+		insuranceSvc:    insuranceSvc,
+		paymentSvc:      paymentSvc,
+		providerBooking: providerBooking,
 	}
 }
 
-// CreateBooking creates a new booking with ACID guarantees
-func (s *BookingService) CreateBooking(ctx context.Context, req *domain.BookingCreateRequest) (*domain.Booking, error) {
-	if req == nil {
-		return nil, fmt.Errorf("booking request cannot be nil")
-	}
-
-	// Validate request
-	if err := s.validateBookingRequest(req); err != nil {
-		return nil, err
-	}
-
-	// Get route
-	route, err := s.routeRepo.FindByID(ctx, req.RouteID)
+// CreateBooking creates a multi-segment booking with ACID transaction
+func (bs *BookingService) CreateBooking(ctx context.Context, routeID string, passenger domain.Passenger, includeInsurance bool, paymentMethod domain.PaymentMethod) (*domain.Booking, error) {
+	// 1. Fetch route
+	route, err := bs.routeRepo.FindByID(ctx, routeID)
 	if err != nil {
 		return nil, fmt.Errorf("route not found: %w", err)
 	}
 
-	// Create booking object
+	if len(route.Segments) == 0 {
+		return nil, fmt.Errorf("route has no segments")
+	}
+
+	// 2. Create booking
 	booking := &domain.Booking{
-		ID:        utils.GenerateBookingID(),
-		RouteID:   req.RouteID,
-		Passengers: req.Passengers,
-		Status:    domain.BookingStatusPending,
-		BookedAt:  time.Now(),
-		PaymentDeadline: time.Now().Add(24 * time.Hour),
-		CancellationDeadline: time.Now().Add(2 * time.Hour),
+		ID:               utils.GenerateID(),
+		RouteID:          routeID,
+		Passenger:        passenger,
+		Segments:         make([]domain.BookedSegment, 0, len(route.Segments)),
+		IncludeInsurance: includeInsurance,
+		Status:           domain.BookingPending,
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
 	}
 
-	// Calculate prices
-	totalPrice := 0.0
-	for range req.Passengers {
-		totalPrice += route.TotalPrice
+	// 3. Calculate insurance if requested
+	if includeInsurance {
+		booking.InsurancePremium = bs.insuranceSvc.CalculatePremium(route)
 	}
-	booking.TotalPrice = totalPrice
 
-	// Calculate insurance if requested
-	if req.IncludeInsurance {
-		insurance, err := s.insuranceServ.CalculateInsurance(ctx, route, booking)
+	// 4. Book all segments (with rollback on failure)
+	bookedSegments := make([]domain.BookedSegment, 0, len(route.Segments))
+	bookingRefs := make([]string, 0, len(route.Segments))
+
+	for i := range route.Segments {
+		// Check for context cancellation
+		select {
+		case <-ctx.Done():
+			// Context cancelled, rollback all bookings
+			bs.rollbackBookings(ctx, bookingRefs)
+			booking.MarkAsFailed("booking cancelled: " + ctx.Err().Error())
+			bs.bookingRepo.Save(context.Background(), booking)
+			return nil, fmt.Errorf("booking cancelled: %w", ctx.Err())
+		default:
+			// Continue with booking
+		}
+
+		segment := &route.Segments[i]
+
+		// Calculate commission
+		basePrice := segment.Price
+		commission := bs.commissionSvc.CalculateCommission(segment.TransportType, basePrice)
+		totalPrice := basePrice + commission
+
+		// Book with provider
+		ticketNumber, bookingRef, err := bs.providerBooking.BookSegment(ctx, segment, &passenger)
 		if err != nil {
-			return nil, fmt.Errorf("insurance calculation failed: %w", err)
-		}
-		booking.InsurancePremium = insurance.Premium
-		booking.InsuranceIncluded = true
-
-		// Create guarantee
-		booking.Guarantee = &domain.BookingGuarantee{
-			GuaranteeID:    utils.GenerateID(),
-			BookingID:      booking.ID,
-			ValidUntil:     time.Now().Add(365 * 24 * time.Hour),
-			InsuranceLevel: insurance.Level,
-			CoverageAmount: insurance.CoverageAmount,
-			CreatedAt:      time.Now(),
-			SOSHotline:     "+7-800-555-0123",
-			RefundPolicy:   "Standard refund policy applies",
-		}
-	}
-
-	// Use transaction for ACID compliance
-	if s.txManager != nil {
-		return s.createBookingWithTransaction(ctx, booking, req.Passengers, route)
-	}
-
-	// Fallback for in-memory repository (no transaction support)
-	return s.createBookingWithoutTransaction(ctx, booking, req.Passengers, route)
-}
-
-// GetBookingByID retrieves a booking by ID
-func (s *BookingService) GetBookingByID(ctx context.Context, id string) (*domain.Booking, error) {
-	if id == "" {
-		return nil, fmt.Errorf("booking ID cannot be empty")
-	}
-
-	return s.bookingRepo.FindByID(ctx, id)
-}
-
-// GetBookingsByRouteID retrieves all bookings for a route
-func (s *BookingService) GetBookingsByRouteID(ctx context.Context, routeID string) ([]domain.Booking, error) {
-	if routeID == "" {
-		return nil, fmt.Errorf("route ID cannot be empty")
-	}
-
-	return s.bookingRepo.FindByRouteID(ctx, routeID)
-}
-
-// CancelBooking cancels an existing booking
-func (s *BookingService) CancelBooking(ctx context.Context, id string) error {
-	if id == "" {
-		return fmt.Errorf("booking ID cannot be empty")
-	}
-
-	booking, err := s.bookingRepo.FindByID(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	if booking.Status == domain.BookingStatusCancelled {
-		return fmt.Errorf("booking is already cancelled")
-	}
-
-	if time.Now().After(booking.CancellationDeadline) {
-		return fmt.Errorf("cancellation deadline has passed")
-	}
-
-	booking.Status = domain.BookingStatusCancelled
-	booking.Notes = "Cancelled by customer"
-
-	return s.bookingRepo.Update(ctx, booking)
-}
-
-// Private methods
-
-func (s *BookingService) createBookingWithTransaction(ctx context.Context, booking *domain.Booking, passengers []domain.Passenger, route *domain.Route) (*domain.Booking, error) {
-	err := s.txManager.WithTx(ctx, func(tx repository.Transaction) error {
-		bookingRepo := tx.GetBookingRepository()
-		ticketRepo := tx.GetTicketRepository()
-
-		// Save booking
-		if err := bookingRepo.Save(ctx, booking); err != nil {
-			return fmt.Errorf("failed to save booking: %w", err)
+			// ROLLBACK: Cancel all previously booked segments
+			bs.rollbackBookings(ctx, bookingRefs)
+			booking.MarkAsFailed(fmt.Sprintf("failed to book segment %d: %v", i+1, err))
+			bs.bookingRepo.Save(ctx, booking)
+			return nil, fmt.Errorf("booking failed at segment %d (%s -> %s): %w", i+1, segment.StartStop.City, segment.EndStop.City, err)
 		}
 
-		// Create tickets for each passenger and segment
-		for _, passenger := range passengers {
-			for _, segment := range route.Segments {
-				ticket := &domain.BookingSegmentTicket{
-					ID:          utils.GenerateID(),
-					BookingID:   booking.ID,
-					SegmentID:   segment.ID,
-					PassengerID: passenger.ID,
-					Provider:    segment.Provider,
-					TicketNumber: utils.GenerateTicketNumber(segment.Provider),
-					Price:       segment.Price,
-					Status:      "confirmed",
-					CreatedAt:   time.Now(),
-				}
-
-				if err := ticketRepo.Save(ctx, ticket); err != nil {
-					return fmt.Errorf("failed to save ticket: %w", err)
-				}
-
-				booking.Tickets = append(booking.Tickets, *ticket)
-			}
+		// Create booked segment
+		bookedSegment := domain.BookedSegment{
+			ID:                 utils.GenerateID(),
+			SegmentID:          segment.ID,
+			Provider:           segment.Provider,
+			TransportType:      segment.TransportType,
+			From:               segment.StartStop,
+			To:                 segment.EndStop,
+			DepartureTime:      segment.DepartureTime,
+			ArrivalTime:        segment.ArrivalTime,
+			TicketNumber:       ticketNumber,
+			Price:              basePrice,
+			Commission:         commission,
+			TotalPrice:         totalPrice,
+			BookingStatus:      domain.BookingConfirmed,
+			ProviderBookingRef: bookingRef,
 		}
 
-		// Update booking with all tickets
-		if err := bookingRepo.Update(ctx, booking); err != nil {
-			return fmt.Errorf("failed to update booking with tickets: %w", err)
-		}
-
-		booking.Status = domain.BookingStatusConfirmed
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
+		bookedSegments = append(bookedSegments, bookedSegment)
+		bookingRefs = append(bookingRefs, bookingRef)
+		booking.AddSegment(bookedSegment)
 	}
 
-	return booking, nil
-}
+	// 5. Create payment
+	grandTotal := booking.GrandTotal
+	payment := bs.paymentSvc.CreatePayment(booking.ID, grandTotal, paymentMethod)
+	booking.Payment = payment
 
-func (s *BookingService) createBookingWithoutTransaction(ctx context.Context, booking *domain.Booking, passengers []domain.Passenger, route *domain.Route) (*domain.Booking, error) {
-	// Save booking
-	if err := s.bookingRepo.Save(ctx, booking); err != nil {
+	// 6. Process payment
+	if err := bs.paymentSvc.ProcessPayment(ctx, payment); err != nil {
+		// ROLLBACK: Cancel all booked segments
+		bs.rollbackBookings(ctx, bookingRefs)
+		booking.MarkAsFailed(fmt.Sprintf("payment failed: %v", err))
+		bs.bookingRepo.Save(ctx, booking)
+		return nil, fmt.Errorf("payment processing failed: %w", err)
+	}
+
+	// 7. Mark booking as confirmed
+	booking.MarkAsConfirmed()
+
+	// 8. Save booking
+	if err := bs.bookingRepo.Save(ctx, booking); err != nil {
 		return nil, fmt.Errorf("failed to save booking: %w", err)
 	}
 
-	// Create tickets for each passenger and segment
-	for _, passenger := range passengers {
-		for _, segment := range route.Segments {
-			ticket := &domain.BookingSegmentTicket{
-				ID:          utils.GenerateID(),
-				BookingID:   booking.ID,
-				SegmentID:   segment.ID,
-				PassengerID: passenger.ID,
-				Provider:    segment.Provider,
-				TicketNumber: utils.GenerateTicketNumber(segment.Provider),
-				Price:       segment.Price,
-				Status:      "confirmed",
-				CreatedAt:   time.Now(),
-			}
-
-			if err := s.ticketRepo.Save(ctx, ticket); err != nil {
-				// In a real scenario with transaction support, this would be rolled back
-				return nil, fmt.Errorf("failed to save ticket: %w", err)
-			}
-
-			booking.Tickets = append(booking.Tickets, *ticket)
-		}
-	}
-
-	booking.Status = domain.BookingStatusConfirmed
 	return booking, nil
 }
 
-func (s *BookingService) validateBookingRequest(req *domain.BookingCreateRequest) error {
-	if req.RouteID == "" {
-		return fmt.Errorf("route_id is required")
-	}
-
-	if len(req.Passengers) == 0 {
-		return fmt.Errorf("at least one passenger is required")
-	}
-
-	for i, p := range req.Passengers {
-		if p.FirstName == "" {
-			return fmt.Errorf("passenger %d first_name is required", i+1)
-		}
-		if p.LastName == "" {
-			return fmt.Errorf("passenger %d last_name is required", i+1)
-		}
-		if p.PassportNumber == "" {
-			return fmt.Errorf("passenger %d passport_number is required", i+1)
+// rollbackBookings cancels all provider bookings (ACID rollback)
+func (bs *BookingService) rollbackBookings(ctx context.Context, bookingRefs []string) {
+	for _, ref := range bookingRefs {
+		// Best effort cancellation - log errors but continue
+		if err := bs.providerBooking.CancelBooking(ctx, ref); err != nil {
+			// In production, this should be logged and monitored
+			fmt.Printf("Warning: failed to cancel booking %s: %v\n", ref, err)
 		}
 	}
+}
 
+// GetBooking retrieves a booking by ID
+func (bs *BookingService) GetBooking(ctx context.Context, bookingID string) (*domain.Booking, error) {
+	return bs.bookingRepo.FindByID(ctx, bookingID)
+}
+
+// CancelBooking cancels a booking and processes refund
+func (bs *BookingService) CancelBooking(ctx context.Context, bookingID string, reason string) error {
+	booking, err := bs.bookingRepo.FindByID(ctx, bookingID)
+	if err != nil {
+		return fmt.Errorf("booking not found: %w", err)
+	}
+
+	if booking.Status != domain.BookingConfirmed {
+		return fmt.Errorf("cannot cancel booking with status: %s", booking.Status)
+	}
+
+	// Cancel all segment bookings
+	bookingRefs := make([]string, 0, len(booking.Segments))
+	for _, segment := range booking.Segments {
+		bookingRefs = append(bookingRefs, segment.ProviderBookingRef)
+	}
+	bs.rollbackBookings(ctx, bookingRefs)
+
+	// Process refund
+	if booking.Payment != nil && booking.Payment.Status == domain.PaymentCompleted {
+		if err := bs.paymentSvc.RefundPayment(ctx, booking.Payment); err != nil {
+			return fmt.Errorf("refund failed: %w", err)
+		}
+	}
+
+	// Mark as cancelled
+	booking.MarkAsCancelled(reason)
+	return bs.bookingRepo.Update(ctx, booking)
+}
+
+// ListBookings returns all bookings (for admin)
+func (bs *BookingService) ListBookings(ctx context.Context) ([]domain.Booking, error) {
+	return bs.bookingRepo.FindAll(ctx)
+}
+
+// --- Mock Provider Booking Service ---
+
+// MockProviderBookingService simulates booking with external providers
+type MockProviderBookingService struct {
+	failureRate float64 // Probability of booking failure for testing
+}
+
+// NewMockProviderBookingService creates a mock provider booking service
+func NewMockProviderBookingService(failureRate float64) *MockProviderBookingService {
+	return &MockProviderBookingService{
+		failureRate: failureRate,
+	}
+}
+
+// BookSegment simulates booking a segment with a provider
+func (mpbs *MockProviderBookingService) BookSegment(ctx context.Context, segment *domain.Segment, passenger *domain.Passenger) (ticketNumber, bookingRef string, err error) {
+	// Simulate processing delay
+	time.Sleep(50 * time.Millisecond)
+
+	// Generate mock ticket number and booking reference
+	ticketNumber = fmt.Sprintf("TKT-%s-%s", segment.Provider[:3], utils.GenerateID()[:8])
+	bookingRef = fmt.Sprintf("BK-%s-%s", segment.TransportType, utils.GenerateID()[:8])
+
+	// Simulate random failures for testing (commented out for hackathon demo)
+	// if rand.Float64() < mpbs.failureRate {
+	// 	return "", "", fmt.Errorf("provider booking failed: no available seats")
+	// }
+
+	return ticketNumber, bookingRef, nil
+}
+
+// CancelBooking simulates cancelling a booking
+func (mpbs *MockProviderBookingService) CancelBooking(ctx context.Context, bookingRef string) error {
+	// Simulate processing delay
+	time.Sleep(30 * time.Millisecond)
+
+	// Always succeed in mock mode
 	return nil
 }

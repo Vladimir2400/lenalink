@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: lenalink_postgres
+    environment:
+      POSTGRES_USER: lenalink
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: lenalink_db
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "15432:5432"  # Changed from 5432 to 15432 to avoid conflicts
+    volumes:
+      # Named volume for data persistence
+      - postgres_data:/var/lib/postgresql/data
+      # Optional: mount SQL initialization script
+      # - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lenalink -d lenalink_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lenalink_network
+    restart: unless-stopped
+
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: lenalink_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@lenalink.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "15050:80"  # Changed from 5050 to 15050
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lenalink_network
+    restart: unless-stopped
+
+  # Redis cache (optional, for future use)
+  redis:
+    image: redis:7-alpine
+    container_name: lenalink_redis
+    ports:
+      - "16379:6379"  # Changed from 6379 to 16379 to avoid conflicts
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lenalink_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  lenalink_network:
+    driver: bridge
