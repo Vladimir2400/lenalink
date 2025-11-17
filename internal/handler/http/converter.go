@@ -49,8 +49,12 @@ func ToRouteResponse(route *domain.Route, routeType string) dto.RouteResponse {
 		totalDistance += seg.Distance
 	}
 
-	totalDuration := route.Segments[len(route.Segments)-1].ArrivalTime.Sub(
-		route.Segments[0].DepartureTime)
+	// Calculate total duration - handle empty segments safely
+	var totalDuration time.Duration
+	if len(route.Segments) > 0 {
+		totalDuration = route.Segments[len(route.Segments)-1].ArrivalTime.Sub(
+			route.Segments[0].DepartureTime)
+	}
 
 	return dto.RouteResponse{
 		ID:            route.ID,
