@@ -79,7 +79,24 @@ func main() {
 	routeService := service.NewRouteService(routeRepo)
 	commissionSvc := service.NewCommissionService(service.DefaultCommissionConfig())
 	insuranceSvc := service.NewInsuranceService(service.DefaultInsuranceConfig())
-	paymentSvc := service.NewPaymentService(service.NewMockPaymentGateway(0.0))
+
+	// Initialize payment gateway based on configuration
+	var paymentGateway service.PaymentGateway
+	if cfg.YooKassa.ShopID != "" && cfg.YooKassa.SecretKey != "" {
+		log.Println("💳 Initializing YooKassa payment gateway...")
+		paymentGateway = service.NewYooKassaGateway(
+			cfg.YooKassa.ShopID,
+			cfg.YooKassa.SecretKey,
+			cfg.YooKassa.ReturnURL,
+		)
+		log.Println("✓ YooKassa gateway initialized")
+	} else {
+		log.Println("💳 Initializing mock payment gateway...")
+		paymentGateway = service.NewMockPaymentGateway(0.0)
+		log.Println("✓ Mock gateway initialized (for development)")
+	}
+
+	paymentSvc := service.NewPaymentService(paymentGateway)
 	providerBooking := service.NewMockProviderBookingService(0.0)
 	bookingService := service.NewBookingService(
 		routeRepo,
@@ -93,7 +110,7 @@ func main() {
 
 	// Initialize router with handlers
 	log.Println("🛣️  Setting up HTTP routes...")
-	router := httphandler.NewRouter(routeService, bookingService)
+	router := httphandler.NewRouter(routeService, bookingService, paymentSvc)
 	log.Println("✓ HTTP routes configured")
 
 	// Server configuration

@@ -97,6 +97,7 @@ func ToPaymentResponse(payment *domain.Payment) *dto.PaymentResponse {
 		Method:            string(payment.Method),
 		Status:            string(payment.Status),
 		ProviderPaymentID: payment.ProviderPaymentID,
+		ConfirmationURL:   payment.ConfirmationURL,
 		CreatedAt:         payment.CreatedAt,
 		CompletedAt:       payment.CompletedAt,
 		FailureReason:     payment.FailureReason,

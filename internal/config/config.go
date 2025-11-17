@@ -12,6 +12,7 @@ type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
 	Logger   LoggerConfig
+	YooKassa YooKassaConfig
 }
 
 // ServerConfig represents HTTP server configuration
@@ -45,6 +46,15 @@ type LoggerConfig struct {
 	JSONFormat bool
 }
 
+// YooKassaConfig represents YooKassa payment gateway configuration
+type YooKassaConfig struct {
+	ShopID     string
+	SecretKey  string
+	WebhookURL string
+	ReturnURL  string
+	TestMode   bool
+}
+
 // Load loads configuration from environment variables and defaults
 func Load() *Config {
 	return &Config{
@@ -72,6 +82,13 @@ func Load() *Config {
 		Logger: LoggerConfig{
 			Level:      getEnv("LOG_LEVEL", "INFO"),
 			JSONFormat: getEnvBool("LOG_JSON_FORMAT", false),
+		},
+		YooKassa: YooKassaConfig{
+			ShopID:     getEnv("YOOKASSA_SHOP_ID", ""),
+			SecretKey:  getEnv("YOOKASSA_SECRET_KEY", ""),
+			WebhookURL: getEnv("YOOKASSA_WEBHOOK_URL", ""),
+			ReturnURL:  getEnv("YOOKASSA_RETURN_URL", "http://localhost:3000/payment/success"),
+			TestMode:   getEnvBool("YOOKASSA_TEST_MODE", true),
 		},
 	}
 }
@@ -144,6 +161,11 @@ func (c *Config) Validate() error {
 		if c.Database.Database == "" {
 			return fmt.Errorf("database name is required for postgres driver")
 		}
+	}
+
+	// YooKassa configuration warning (not required for development)
+	if c.YooKassa.ShopID == "" {
+		fmt.Println("Warning: YooKassa not configured - using mock payment gateway")
 	}
 
 	return nil

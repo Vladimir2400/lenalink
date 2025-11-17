@@ -15,12 +15,14 @@ type Router struct {
 	healthHandler  *HealthHandler
 	routeHandler   *RouteHandler
 	bookingHandler *BookingHandler
+	webhookHandler *WebhookHandler
 }
 
 // NewRouter creates and configures the HTTP router
 func NewRouter(
 	routeService *service.RouteService,
 	bookingService *service.BookingService,
+	paymentService *service.PaymentService,
 ) *Router {
 	r := mux.NewRouter()
 
@@ -28,6 +30,7 @@ func NewRouter(
 	healthHandler := NewHealthHandler()
 	routeHandler := NewRouteHandler(routeService)
 	bookingHandler := NewBookingHandler(bookingService)
+	webhookHandler := NewWebhookHandler(bookingService, paymentService)
 
 	// Global middleware (applied to all routes)
 	r.Use(middleware.Recovery)
@@ -52,6 +55,9 @@ func NewRouter(
 	api.HandleFunc("/bookings/{id}", bookingHandler.GetBooking).Methods("GET")
 	api.HandleFunc("/bookings/{id}/cancel", bookingHandler.CancelBooking).Methods("POST")
 
+	// Webhook endpoints (no auth required for payment provider callbacks)
+	api.HandleFunc("/webhooks/yookassa", webhookHandler.HandleYooKassaWebhook).Methods("POST")
+
 	// 404 handler
 	r.NotFoundHandler = r.NewRoute().HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		eh := NewErrorHandler()
@@ -63,5 +69,6 @@ func NewRouter(
 		healthHandler:  healthHandler,
 		routeHandler:   routeHandler,
 		bookingHandler: bookingHandler,
+		webhookHandler: webhookHandler,
 	}
 }
