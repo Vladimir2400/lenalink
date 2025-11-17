@@ -222,7 +222,7 @@ INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end
 ('seg_msk_olek_cheap_3', 'route_msk_olek_cheap', 'bus', 'Avtotrans Yakutia', 'yakutsk_bus', 'olekminsk_port',
  '2025-11-20 22:00:00', '2025-11-21 12:00:00', 3200.00, 36000000000000, 50, 72.0, 400, 3),
 ('seg_msk_olek_cheap_4', 'route_msk_olek_cheap', 'walk', 'On foot', 'olekminsk_port', 'olekminsk_port',
- '2025-11-21 12:00:00', '2025-11-21 12:00:00', 0.00, 0, 1, 100.0, 0, 4);
+ '2025-11-21 12:00:00', '2025-11-21 12:15:00', 0.00, 900000000000, 1, 100.0, 0, 4);
 
 -- Route 6 (Moscow to Sangur)
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
@@ -305,35 +305,35 @@ INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end
 -- ============================================================================
 
 -- Route 3 connections (Transfer in Moscow)
-INSERT INTO connections (id, route_id, from_segment_id, to_segment_id, connection_type,
-                        waiting_time, transfer_distance, is_valid) VALUES
-('conn_msk_yks_3_1', 'route_msk_yks_transfer', 'seg_msk_yks_3a', 'seg_msk_yks_3b',
- 'airport_transfer', 3600000000000, 35000, true);
+INSERT INTO connections (route_id, from_segment_id, to_segment_id,
+                        transfer_duration, transfer_distance, requires_transport, is_valid, gap, sequence_order) VALUES
+('route_msk_yks_transfer', 'seg_msk_yks_3a', 'seg_msk_yks_3b',
+ 3600000000000, 35000, true, true, 3600000000000, 1);
 
 -- Route 4 connections (Taxi and then river)
-INSERT INTO connections (id, route_id, from_segment_id, to_segment_id, connection_type,
-                        waiting_time, transfer_distance, is_valid) VALUES
-('conn_msk_olek_1', 'route_msk_olek_opt', 'seg_msk_olek_1', 'seg_msk_olek_2',
- 'airport_transfer', 1800000000000, 20000, true),
-('conn_msk_olek_2', 'route_msk_olek_opt', 'seg_msk_olek_2', 'seg_msk_olek_3',
- 'city_transfer', 4800000000000, 500, true);
+INSERT INTO connections (route_id, from_segment_id, to_segment_id,
+                        transfer_duration, transfer_distance, requires_transport, is_valid, gap, sequence_order) VALUES
+('route_msk_olek_opt', 'seg_msk_olek_1', 'seg_msk_olek_2',
+ 1800000000000, 20000, true, true, 1800000000000, 1),
+('route_msk_olek_opt', 'seg_msk_olek_2', 'seg_msk_olek_3',
+ 4800000000000, 500, false, true, 4800000000000, 2);
 
 -- Route 5 connections (complex transfers)
-INSERT INTO connections (id, route_id, from_segment_id, to_segment_id, connection_type,
-                        waiting_time, transfer_distance, is_valid) VALUES
-('conn_msk_olek_cheap_1', 'route_msk_olek_cheap', 'seg_msk_olek_cheap_1', 'seg_msk_olek_cheap_2',
- 'airport_transfer', 1800000000000, 20000, true),
-('conn_msk_olek_cheap_2', 'route_msk_olek_cheap', 'seg_msk_olek_cheap_2', 'seg_msk_olek_cheap_3',
- 'city_transfer', 7200000000000, 500, true),
-('conn_msk_olek_cheap_3', 'route_msk_olek_cheap', 'seg_msk_olek_cheap_3', 'seg_msk_olek_cheap_4',
- 'terminal_transfer', 0, 100, true);
+INSERT INTO connections (route_id, from_segment_id, to_segment_id,
+                        transfer_duration, transfer_distance, requires_transport, is_valid, gap, sequence_order) VALUES
+('route_msk_olek_cheap', 'seg_msk_olek_cheap_1', 'seg_msk_olek_cheap_2',
+ 1800000000000, 20000, true, true, 1800000000000, 1),
+('route_msk_olek_cheap', 'seg_msk_olek_cheap_2', 'seg_msk_olek_cheap_3',
+ 7200000000000, 500, false, true, 7200000000000, 2),
+('route_msk_olek_cheap', 'seg_msk_olek_cheap_3', 'seg_msk_olek_cheap_4',
+ 0, 100, false, true, 0, 3);
 
 -- Route 6 connections (Sangur route)
-INSERT INTO connections (id, route_id, from_segment_id, to_segment_id, connection_type,
-                        waiting_time, transfer_distance, is_valid) VALUES
-('conn_sangur_1', 'route_msk_sangur', 'seg_sangur_1', 'seg_sangur_2',
- 'airport_transfer', 1800000000000, 20000, true),
-('conn_sangur_2', 'route_msk_sangur', 'seg_sangur_2', 'seg_sangur_3',
- 'city_transfer', 3600000000000, 500, true),
-('conn_sangur_3', 'route_msk_sangur', 'seg_sangur_3', 'seg_sangur_4',
- 'terminal_transfer', 3600000000000, 100, true);
+INSERT INTO connections (route_id, from_segment_id, to_segment_id,
+                        transfer_duration, transfer_distance, requires_transport, is_valid, gap, sequence_order) VALUES
+('route_msk_sangur', 'seg_sangur_1', 'seg_sangur_2',
+ 1800000000000, 20000, true, true, 1800000000000, 1),
+('route_msk_sangur', 'seg_sangur_2', 'seg_sangur_3',
+ 3600000000000, 500, false, true, 3600000000000, 2),
+('route_msk_sangur', 'seg_sangur_3', 'seg_sangur_4',
+ 3600000000000, 100, false, true, 3600000000000, 3);

@@ -189,6 +189,11 @@ func (r *RouteRepository) FindByCriteria(ctx context.Context, criteria *domain.R
 			route.TransportTypes = append(route.TransportTypes, domain.TransportType(tt))
 		}
 
+		// Fetch segments for this route
+		if err := r.fetchSegments(ctx, &route); err != nil {
+			return nil, fmt.Errorf("error fetching segments for route %s: %w", route.ID, err)
+		}
+
 		routes = append(routes, route)
 	}
 
