@@ -38,12 +38,12 @@ func NewRouter(
 	r.Use(middleware.Logging)
 	r.Use(middleware.CORS)
 
-	// Health check endpoints
-	r.HandleFunc("/health", healthHandler.Health).Methods("GET")
-	r.HandleFunc("/ready", healthHandler.Ready).Methods("GET")
-
 	// API v1 routes
 	api := r.PathPrefix("/api/v1").Subrouter()
+
+	// Health check endpoints
+	api.HandleFunc("/health", healthHandler.Health).Methods("GET")
+	api.HandleFunc("/ready", healthHandler.Ready).Methods("GET")
 
 	// Route endpoints
 	api.HandleFunc("/routes/search", routeHandler.SearchRoutes).Methods("POST")
