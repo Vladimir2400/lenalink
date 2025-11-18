@@ -1,6 +1,13 @@
-version: '3.8'
-
 services:
+  app:
+    build: ./
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   # PostgreSQL database
   postgres:
     image: postgres:15-alpine
@@ -11,7 +18,7 @@ services:
       POSTGRES_DB: lenalink_db
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
     ports:
-      - "15432:5432"  # Changed from 5432 to 15432 to avoid conflicts
+      - "15432:5432" # Changed from 5432 to 15432 to avoid conflicts
     volumes:
       # Named volume for data persistence
       - postgres_data:/var/lib/postgresql/data
@@ -33,9 +40,9 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@lenalink.com
       PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
-      - "15050:80"  # Changed from 5050 to 15050
+      - "15050:80" # Changed from 5050 to 15050
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
@@ -50,7 +57,7 @@ services:
     image: redis:7-alpine
     container_name: lenalink_redis
     ports:
-      - "16379:6379"  # Changed from 6379 to 16379 to avoid conflicts
+      - "16379:6379" # Changed from 6379 to 16379 to avoid conflicts
     volumes:
       - redis_data:/data
     healthcheck:
