@@ -6,6 +6,11 @@ services:
       - "8080:8080"
     env_file:
       - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lenalink_network
     extra_hosts:
       - "host.docker.internal:host-gateway"
   # PostgreSQL database
