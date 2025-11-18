@@ -10,6 +10,7 @@ dist/
 *.o
 *.a
 *.out
+docs/
 
 # ==================== Go ====================
 # Dependency directories
