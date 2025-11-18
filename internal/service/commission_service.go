@@ -6,25 +6,25 @@ import (
 
 // CommissionConfig holds commission rates for different transport types
 type CommissionConfig struct {
-	AirCommissionRate   float64 // Percentage (e.g., 0.07 = 7%)
-	RailCommissionRate  float64
-	BusCommissionRate   float64
-	RiverCommissionRate float64
-	TaxiCommissionRate  float64
-	WalkCommissionRate  float64
+	AirCommissionRate     float64 // Percentage (e.g., 0.07 = 7%)
+	RailCommissionRate    float64
+	BusCommissionRate     float64
+	RiverCommissionRate   float64
+	TaxiCommissionRate    float64
+	WalkCommissionRate    float64
 	DefaultCommissionRate float64
 }
 
 // DefaultCommissionConfig returns default commission rates
 func DefaultCommissionConfig() CommissionConfig {
 	return CommissionConfig{
-		AirCommissionRate:     0.07,  // 7% for flights
-		RailCommissionRate:    0.05,  // 5% for trains
-		BusCommissionRate:     0.08,  // 8% for buses
-		RiverCommissionRate:   0.10,  // 10% for river transport
-		TaxiCommissionRate:    0.15,  // 15% for taxi
-		WalkCommissionRate:    0.00,  // 0% for walking (free)
-		DefaultCommissionRate: 0.07,  // 7% default
+		AirCommissionRate:     0.07, // 7% for flights
+		RailCommissionRate:    0.05, // 5% for trains
+		BusCommissionRate:     0.08, // 8% for buses
+		RiverCommissionRate:   0.10, // 10% for river transport
+		TaxiCommissionRate:    0.15, // 15% for taxi
+		WalkCommissionRate:    0.00, // 0% for walking (free)
+		DefaultCommissionRate: 0.07, // 7% default
 	}
 }
 

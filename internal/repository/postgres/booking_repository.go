@@ -347,6 +347,18 @@ func (r *BookingRepository) Save(ctx context.Context, booking *domain.Booking) e
 		return fmt.Errorf("error saving booking: %w", err)
 	}
 
+	// Save booked segments
+	if err := r.saveBookedSegments(ctx, booking); err != nil {
+		return err
+	}
+
+	// Save payment if exists
+	if booking.Payment != nil {
+		if err := r.savePayment(ctx, booking.Payment); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -379,6 +391,13 @@ func (r *BookingRepository) Update(ctx context.Context, booking *domain.Booking)
 
 	if rows == 0 {
 		return domain.ErrBookingNotFound
+	}
+
+	// Update payment if exists
+	if booking.Payment != nil {
+		if err := r.updatePayment(ctx, booking.Payment); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -475,14 +494,14 @@ func (r *BookingRepository) fetchBookedSegments(ctx context.Context, booking *do
 func (r *BookingRepository) fetchPayment(ctx context.Context, booking *domain.Booking) error {
 	const query = `
 		SELECT id, order_id, amount, currency, method, status,
-		       provider_payment_id, created_at, completed_at, failure_reason
+		       provider_payment_id, confirmation_url, created_at, completed_at, failure_reason
 		FROM payments
 		WHERE order_id = $1
 	`
 
 	var payment domain.Payment
 	var completedAt sql.NullTime
-	var providerPaymentID, failureReason sql.NullString
+	var providerPaymentID, confirmationURL, failureReason sql.NullString
 
 	err := r.db.db.QueryRowContext(ctx, query, booking.ID).Scan(
 		&payment.ID,
@@ -492,6 +511,7 @@ func (r *BookingRepository) fetchPayment(ctx context.Context, booking *domain.Bo
 		&payment.Method,
 		&payment.Status,
 		&providerPaymentID,
+		&confirmationURL,
 		&payment.CreatedAt,
 		&completedAt,
 		&failureReason,
@@ -508,10 +528,105 @@ func (r *BookingRepository) fetchPayment(ctx context.Context, booking *domain.Bo
 		if providerPaymentID.Valid {
 			payment.ProviderPaymentID = providerPaymentID.String
 		}
+		if confirmationURL.Valid {
+			payment.ConfirmationURL = confirmationURL.String
+		}
 		if failureReason.Valid {
 			payment.FailureReason = failureReason.String
 		}
 		booking.Payment = &payment
+	}
+
+	return nil
+}
+
+func (r *BookingRepository) saveBookedSegments(ctx context.Context, booking *domain.Booking) error {
+	const query = `
+		INSERT INTO booked_segments (
+			id, booking_id, segment_id, provider, transport_type,
+			from_stop_id, to_stop_id, departure_time, arrival_time,
+			ticket_number, price, commission, total_price,
+			booking_status, provider_booking_ref, sequence_order
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+		)
+	`
+
+	for i, segment := range booking.Segments {
+		_, err := r.db.db.ExecContext(ctx, query,
+			segment.ID,
+			booking.ID,
+			segment.SegmentID,
+			segment.Provider,
+			string(segment.TransportType),
+			segment.From.ID,
+			segment.To.ID,
+			segment.DepartureTime,
+			segment.ArrivalTime,
+			segment.TicketNumber,
+			segment.Price,
+			segment.Commission,
+			segment.TotalPrice,
+			string(segment.BookingStatus),
+			segment.ProviderBookingRef,
+			i+1,
+		)
+		if err != nil {
+			return fmt.Errorf("error saving booked segment: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (r *BookingRepository) savePayment(ctx context.Context, payment *domain.Payment) error {
+	const query = `
+		INSERT INTO payments (
+			id, order_id, amount, currency, method, status,
+			provider_payment_id, confirmation_url, created_at, completed_at, failure_reason
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+		)
+	`
+
+	_, err := r.db.db.ExecContext(ctx, query,
+		payment.ID,
+		payment.OrderID,
+		payment.Amount,
+		payment.Currency,
+		string(payment.Method),
+		string(payment.Status),
+		payment.ProviderPaymentID,
+		payment.ConfirmationURL,
+		payment.CreatedAt,
+		payment.CompletedAt,
+		payment.FailureReason,
+	)
+
+	if err != nil {
+		return fmt.Errorf("error saving payment: %w", err)
+	}
+
+	return nil
+}
+
+func (r *BookingRepository) updatePayment(ctx context.Context, payment *domain.Payment) error {
+	const query = `
+		UPDATE payments
+		SET status = $2, provider_payment_id = $3, completed_at = $4, failure_reason = $5
+		WHERE id = $1
+	`
+
+	_, err := r.db.db.ExecContext(ctx, query,
+		payment.ID,
+		string(payment.Status),
+		payment.ProviderPaymentID,
+		payment.CompletedAt,
+		payment.FailureReason,
+	)
+
+	if err != nil {
+		return fmt.Errorf("error updating payment: %w", err)
 	}
 
 	return nil

@@ -6,11 +6,12 @@ import "time"
 type BookingStatus string
 
 const (
-	BookingPending   BookingStatus = "pending"    // Awaiting payment
-	BookingConfirmed BookingStatus = "confirmed"  // Payment successful, all segments booked
-	BookingFailed    BookingStatus = "failed"     // Booking or payment failed
-	BookingCancelled BookingStatus = "cancelled"  // User cancelled
-	BookingRefunded  BookingStatus = "refunded"   // Refund processed
+	BookingPending        BookingStatus = "pending"         // Awaiting payment
+	BookingPendingPayment BookingStatus = "pending_payment" // Waiting for user to complete payment (YooKassa redirect)
+	BookingConfirmed      BookingStatus = "confirmed"       // Payment successful, all segments booked
+	BookingFailed         BookingStatus = "failed"          // Booking or payment failed
+	BookingCancelled      BookingStatus = "cancelled"       // User cancelled
+	BookingRefunded       BookingStatus = "refunded"        // Refund processed
 )
 
 // PaymentStatus represents the status of a payment
@@ -64,16 +65,17 @@ type BookedSegment struct {
 
 // Payment represents a payment transaction
 type Payment struct {
-	ID              string        `json:"id"`
-	OrderID         string        `json:"order_id"`
-	Amount          float64       `json:"amount"`
-	Currency        string        `json:"currency"`
-	Method          PaymentMethod `json:"method"`
-	Status          PaymentStatus `json:"status"`
-	ProviderPaymentID string      `json:"provider_payment_id"` // Payment gateway transaction ID
-	CreatedAt       time.Time     `json:"created_at"`
-	CompletedAt     *time.Time    `json:"completed_at,omitempty"`
-	FailureReason   string        `json:"failure_reason,omitempty"`
+	ID                string        `json:"id"`
+	OrderID           string        `json:"order_id"`
+	Amount            float64       `json:"amount"`
+	Currency          string        `json:"currency"`
+	Method            PaymentMethod `json:"method"`
+	Status            PaymentStatus `json:"status"`
+	ProviderPaymentID string        `json:"provider_payment_id,omitempty"` // Payment gateway transaction ID
+	ConfirmationURL   string        `json:"confirmation_url,omitempty"`    // URL for redirect to payment provider (YooKassa)
+	CreatedAt         time.Time     `json:"created_at"`
+	CompletedAt       *time.Time    `json:"completed_at,omitempty"`
+	FailureReason     string        `json:"failure_reason,omitempty"`
 }
 
 // Booking represents a complete multi-segment booking

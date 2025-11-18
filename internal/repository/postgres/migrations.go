@@ -24,7 +24,9 @@ func RunMigrations(db *sql.DB) error {
 	}
 
 	if !exists {
-		return fmt.Errorf("schema_migrations table does not exist - run migrations first")
+		fmt.Println("⚠ schema_migrations table does not exist - run 'make migrate-up' to apply migrations")
+		fmt.Println("  Continuing without migration check...")
+		return nil
 	}
 
 	// Check current migration version

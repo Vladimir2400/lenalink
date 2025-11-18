@@ -145,8 +145,14 @@ func (bs *BookingService) CreateBooking(ctx context.Context, routeID string, pas
 		return nil, fmt.Errorf("payment processing failed: %w", err)
 	}
 
-	// 7. Mark booking as confirmed
-	booking.MarkAsConfirmed()
+	// 7. Check if payment requires redirect (YooKassa async flow)
+	if payment.ConfirmationURL != "" {
+		// Payment pending - user needs to complete payment via redirect
+		booking.Status = domain.BookingPendingPayment
+	} else {
+		// Payment completed immediately (mock gateway or instant confirmation)
+		booking.MarkAsConfirmed()
+	}
 
 	// 8. Save booking
 	if err := bs.bookingRepo.Save(ctx, booking); err != nil {
@@ -170,6 +176,12 @@ func (bs *BookingService) rollbackBookings(ctx context.Context, bookingRefs []st
 // GetBooking retrieves a booking by ID
 func (bs *BookingService) GetBooking(ctx context.Context, bookingID string) (*domain.Booking, error) {
 	return bs.bookingRepo.FindByID(ctx, bookingID)
+}
+
+// UpdateBooking updates an existing booking (used by webhook handler)
+func (bs *BookingService) UpdateBooking(ctx context.Context, booking *domain.Booking) error {
+	booking.UpdatedAt = time.Now()
+	return bs.bookingRepo.Update(ctx, booking)
 }
 
 // CancelBooking cancels a booking and processes refund

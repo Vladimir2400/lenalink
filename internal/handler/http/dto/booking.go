@@ -76,6 +76,7 @@ type PaymentResponse struct {
 	Method            string     `json:"method"` // card, yookassa, cloudpay, sberpay
 	Status            string     `json:"status"` // pending, completed, failed, refunded
 	ProviderPaymentID string     `json:"provider_payment_id,omitempty"`
+	ConfirmationURL   string     `json:"confirmation_url,omitempty"` // URL for redirect to payment provider (YooKassa)
 	CreatedAt         time.Time  `json:"created_at"`
 	CompletedAt       *time.Time `json:"completed_at,omitempty"`
 	FailureReason     string     `json:"failure_reason,omitempty"`
