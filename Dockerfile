@@ -14,8 +14,6 @@ WORKDIR /root/
 
 COPY --from=builder /app/main ./
 COPY --from=builder /app/.env ./
-COPY --from=builder /app/configs ./configs
-COPY --from=builder /app/swag ./swag
 
 EXPOSE 8080
 
