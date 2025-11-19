@@ -10,16 +10,18 @@ DB_URL=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?ssl
 
 help:
 	@echo "Available commands:"
-	@echo "  make migrate-up        - Apply all pending migrations"
-	@echo "  make migrate-down      - Rollback last migration"
-	@echo "  make migrate-force     - Force migration version (use VERSION=N)"
-	@echo "  make migrate-version   - Show current migration version"
-	@echo "  make migrate-create    - Create new migration (use NAME=migration_name)"
-	@echo "  make db-reset          - Drop and recreate database"
-	@echo "  make db-drop           - Drop database only"
-	@echo "  make docker-up         - Start PostgreSQL with docker-compose"
-	@echo "  make docker-down       - Stop PostgreSQL containers"
-	@echo "  make docker-logs       - View PostgreSQL logs"
+	@echo "  make migrate-up            - Apply all pending migrations"
+	@echo "  make migrate-down          - Rollback last migration"
+	@echo "  make migrate-force         - Force migration version (use VERSION=N)"
+	@echo "  make migrate-version       - Show current migration version"
+	@echo "  make migrate-create        - Create new migration (use NAME=migration_name)"
+	@echo "  make db-reset              - Drop, recreate database and apply migrations"
+	@echo "  make db-reset-with-data    - db-reset + load test data from scripts/"
+	@echo "  make db-drop               - Drop database only"
+	@echo "  make db-create             - Create database only"
+	@echo "  make docker-up             - Start PostgreSQL with docker-compose"
+	@echo "  make docker-down           - Stop PostgreSQL containers"
+	@echo "  make docker-logs           - View PostgreSQL logs"
 
 # Docker commands
 docker-up:
@@ -64,18 +66,30 @@ migrate-create:
 	migrate create -ext sql -dir migrations -seq $(NAME)
 
 # Database setup commands
-db-reset: db-drop migrate-up
+db-reset:
+	@echo "🔄 Resetting database..."
+	@docker-compose exec -T postgres psql -U $(DB_USER) -d postgres -c "DROP DATABASE IF EXISTS $(DB_NAME);" || true
+	@docker-compose exec -T postgres psql -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_NAME) OWNER $(DB_USER);"
+	@echo "✓ Database dropped and recreated"
+	@sleep 1
+	@make migrate-up
 	@echo "✓ Database reset complete"
 
 db-drop:
 	@echo "Dropping database $(DB_NAME)..."
-	dropdb --if-exists -U $(DB_USER) $(DB_NAME)
+	@docker-compose exec -T postgres psql -U $(DB_USER) -d postgres -c "DROP DATABASE IF EXISTS $(DB_NAME);" || true
 	@echo "✓ Database dropped"
 
 db-create:
 	@echo "Creating database $(DB_NAME)..."
-	createdb -U $(DB_USER) $(DB_NAME)
+	@docker-compose exec -T postgres psql -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_NAME) OWNER $(DB_USER);"
 	@echo "✓ Database created"
+
+# Full reset with test data
+db-reset-with-data: db-reset
+	@echo "📥 Loading test data..."
+	@docker-compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) < scripts/seed_yakutia_routes.sql
+	@echo "✓ Test data loaded successfully"
 
 # Development commands
 dev-setup: docker-up
