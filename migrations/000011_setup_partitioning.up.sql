@@ -1,93 +1,31 @@
--- Setup table partitioning for improved performance and maintenance
+-- Setup table security and performance features
+-- Note: Partitioning requires tables to be created with PARTITION BY clause
+-- Since our tables are already created as regular tables, we'll skip partitioning
+-- and only enable Row Level Security for future use
 
--- Note: PostgreSQL 10+ supports native partitioning
--- We'll use RANGE partitioning on timestamp columns
-
--- Partitioning ROUTES by saved_at (monthly)
+-- Enable Row Level Security on ROUTES
+-- (Policies can be added later for multi-tenancy)
 ALTER TABLE routes
     ENABLE ROW LEVEL SECURITY;
 
--- Partitioning BOOKINGS by created_at (quarterly)
+-- Enable Row Level Security on BOOKINGS
 ALTER TABLE bookings
     ENABLE ROW LEVEL SECURITY;
 
--- Create partitions for ROUTES (save_at monthly)
--- Current year and next year partitions
-CREATE TABLE IF NOT EXISTS routes_2024_q1 PARTITION OF routes
-    FOR VALUES FROM ('2024-01-01') TO ('2024-04-01');
+-- Enable Row Level Security on PAYMENTS
+ALTER TABLE payments
+    ENABLE ROW LEVEL SECURITY;
 
-CREATE TABLE IF NOT EXISTS routes_2024_q2 PARTITION OF routes
-    FOR VALUES FROM ('2024-04-01') TO ('2024-07-01');
-
-CREATE TABLE IF NOT EXISTS routes_2024_q3 PARTITION OF routes
-    FOR VALUES FROM ('2024-07-01') TO ('2024-10-01');
-
-CREATE TABLE IF NOT EXISTS routes_2024_q4 PARTITION OF routes
-    FOR VALUES FROM ('2024-10-01') TO ('2025-01-01');
-
-CREATE TABLE IF NOT EXISTS routes_2025_q1 PARTITION OF routes
-    FOR VALUES FROM ('2025-01-01') TO ('2025-04-01');
-
-CREATE TABLE IF NOT EXISTS routes_2025_q2 PARTITION OF routes
-    FOR VALUES FROM ('2025-04-01') TO ('2025-07-01');
-
-CREATE TABLE IF NOT EXISTS routes_2025_q3 PARTITION OF routes
-    FOR VALUES FROM ('2025-07-01') TO ('2025-10-01');
-
-CREATE TABLE IF NOT EXISTS routes_2025_q4 PARTITION OF routes
-    FOR VALUES FROM ('2025-10-01') TO ('2026-01-01');
-
--- Create partitions for BOOKINGS (created_at quarterly)
-CREATE TABLE IF NOT EXISTS bookings_2024_q1 PARTITION OF bookings
-    FOR VALUES FROM ('2024-01-01') TO ('2024-04-01');
-
-CREATE TABLE IF NOT EXISTS bookings_2024_q2 PARTITION OF bookings
-    FOR VALUES FROM ('2024-04-01') TO ('2024-07-01');
-
-CREATE TABLE IF NOT EXISTS bookings_2024_q3 PARTITION OF bookings
-    FOR VALUES FROM ('2024-07-01') TO ('2024-10-01');
-
-CREATE TABLE IF NOT EXISTS bookings_2024_q4 PARTITION OF bookings
-    FOR VALUES FROM ('2024-10-01') TO ('2025-01-01');
-
-CREATE TABLE IF NOT EXISTS bookings_2025_q1 PARTITION OF bookings
-    FOR VALUES FROM ('2025-01-01') TO ('2025-04-01');
-
-CREATE TABLE IF NOT EXISTS bookings_2025_q2 PARTITION OF bookings
-    FOR VALUES FROM ('2025-04-01') TO ('2025-07-01');
-
-CREATE TABLE IF NOT EXISTS bookings_2025_q3 PARTITION OF bookings
-    FOR VALUES FROM ('2025-07-01') TO ('2025-10-01');
-
-CREATE TABLE IF NOT EXISTS bookings_2025_q4 PARTITION OF bookings
-    FOR VALUES FROM ('2025-10-01') TO ('2026-01-01');
-
--- Create partitions for PAYMENTS (created_at quarterly)
-CREATE TABLE IF NOT EXISTS payments_2024_q1 PARTITION OF payments
-    FOR VALUES FROM ('2024-01-01') TO ('2024-04-01');
-
-CREATE TABLE IF NOT EXISTS payments_2024_q2 PARTITION OF payments
-    FOR VALUES FROM ('2024-04-01') TO ('2024-07-01');
-
-CREATE TABLE IF NOT EXISTS payments_2024_q3 PARTITION OF payments
-    FOR VALUES FROM ('2024-07-01') TO ('2024-10-01');
-
-CREATE TABLE IF NOT EXISTS payments_2024_q4 PARTITION OF payments
-    FOR VALUES FROM ('2024-10-01') TO ('2025-01-01');
-
-CREATE TABLE IF NOT EXISTS payments_2025_q1 PARTITION OF payments
-    FOR VALUES FROM ('2025-01-01') TO ('2025-04-01');
-
-CREATE TABLE IF NOT EXISTS payments_2025_q2 PARTITION OF payments
-    FOR VALUES FROM ('2025-04-01') TO ('2025-07-01');
-
-CREATE TABLE IF NOT EXISTS payments_2025_q3 PARTITION OF payments
-    FOR VALUES FROM ('2025-07-01') TO ('2025-10-01');
-
-CREATE TABLE IF NOT EXISTS payments_2025_q4 PARTITION OF payments
-    FOR VALUES FROM ('2025-10-01') TO ('2026-01-01');
+-- Create indexes for better query performance (if not exist)
+CREATE INDEX IF NOT EXISTS idx_routes_saved_at ON routes(saved_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at DESC);
 
 -- Add comments
-COMMENT ON TABLE routes_2024_q1 IS 'Partition of routes table for Q1 2024';
-COMMENT ON TABLE bookings_2024_q1 IS 'Partition of bookings table for Q1 2024';
-COMMENT ON TABLE payments_2024_q1 IS 'Partition of payments table for Q1 2024';
+COMMENT ON TABLE routes IS 'Complete multi-segment journeys with pricing and reliability (RLS enabled)';
+COMMENT ON TABLE bookings IS 'Customer orders with embedded passenger data (RLS enabled)';
+COMMENT ON TABLE payments IS 'Payment transactions 1:1 with bookings (RLS enabled)';
+
+-- Note: For production with high volume, consider recreating tables with native partitioning:
+-- CREATE TABLE routes (...) PARTITION BY RANGE (saved_at);
+-- This would require data migration and is beyond the scope of this migration
