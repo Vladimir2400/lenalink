@@ -181,3 +181,6 @@ seed-aviasales:
 seed-rzd:
 	@echo "🌱 Seeding database from RZD only..."
 	SYNC_PROVIDER=rzd go run ./cmd/seed
+
+docker-seed:
+	docker compose run --rm seed
