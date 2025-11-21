@@ -131,16 +131,66 @@ func (s *service) syncGarsData(ctx context.Context) error {
 	startDate := time.Now()
 	endDate := startDate.AddDate(0, 0, 30)
 
-	// Note: In real implementation, you would fetch schedules with proper filtering
-	// For now, we'll use a simplified approach
 	log.Printf("Fetching GARS schedules from %s to %s", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 
-	// This is a simplified version - in production you would:
-	// 1. Fetch trip schedules with date filtering
-	// 2. For each schedule, fetch stops, fares, and seat availability
-	// 3. Convert to segments and save
-	// Due to complexity, we'll leave this as a TODO for now
+	// Fetch trip schedules
+	tripSchedules, _, err := garsService.TripSchedules(ctx)
+	if err != nil {
+		log.Printf("Warning: Error fetching trip schedules: %v", err)
+		log.Println("GARS data sync completed (stops only)")
+		return nil
+	}
 
+	log.Printf("Fetched %d trip schedules from GARS", len(tripSchedules))
+
+	// Create stop map for quick lookup
+	stopMap := make(map[string]gars.Stop)
+	for _, stop := range stops {
+		stopMap[stop.RefKey] = stop
+	}
+
+	// Convert trip schedules to segments
+	segmentsCount := 0
+	for _, schedule := range tripSchedules {
+		// Fetch stops for this trip
+		tripStops, _, err := garsService.TripScheduleStops(ctx, gars.WithFilter(fmt.Sprintf("TripScheduleKey eq '%s'", schedule.RefKey)))
+		if err != nil {
+			log.Printf("Warning: Error fetching stops for schedule %s: %v", schedule.RefKey, err)
+			continue
+		}
+
+		if len(tripStops) < 2 {
+			continue // Need at least origin and destination
+		}
+
+		// For each trip schedule, create segments for upcoming days
+		for d := 0; d < 7; d++ { // Next 7 days
+			tripDate := startDate.AddDate(0, 0, d)
+
+			// Try to fetch fare information (optional)
+			var fare *gars.Fare
+			fares, _, err := garsService.Fares(ctx, gars.WithFilter(fmt.Sprintf("TripScheduleKey eq '%s'", schedule.RefKey)), gars.WithTop(1))
+			if err == nil && len(fares) > 0 {
+				fare = &fares[0]
+			}
+
+			// Convert to segment
+			segment, err := mapper.GarsScheduleToSegment(schedule, tripStops, stopMap, fare, nil, tripDate)
+			if err != nil {
+				log.Printf("Warning: Error converting schedule %s to segment: %v", schedule.RefKey, err)
+				continue
+			}
+
+			// Save segment
+			if err := s.segmentRepo.Save(ctx, segment); err != nil {
+				log.Printf("Warning: Error saving segment %s: %v", segment.ID, err)
+				continue
+			}
+			segmentsCount++
+		}
+	}
+
+	log.Printf("Saved %d segments from GARS", segmentsCount)
 	log.Println("GARS data sync completed")
 	return nil
 }
@@ -188,25 +238,74 @@ func (s *service) syncAviasalesData(ctx context.Context) error {
 
 	log.Printf("Saved %d airports from Aviasales", airportsCount)
 
-	// Fetch flight prices for popular routes
-	// For MVP, we'll sync a few key routes
-	popularRoutes := []struct{ origin, destination string }{
-		{"MOW", "LED"}, // Moscow - Saint Petersburg
-		{"MOW", "SVX"}, // Moscow - Yekaterinburg
-		{"MOW", "KJA"}, // Moscow - Krasnoyarsk
-		{"MOW", "IKT"}, // Moscow - Irkutsk
-		{"MOW", "YKS"}, // Moscow - Yakutsk
-		{"LED", "YKS"}, // Saint Petersburg - Yakutsk
+	// Fetch flight prices for Yakutia routes
+	// Focus on routes connecting Yakutia with major cities and internal Yakutia routes
+	yakutiaRoutes := []struct {
+		origin      string
+		destination string
+		description string
+	}{
+		// Якутск - крупные города России
+		{"MOW", "YKS", "Москва - Якутск"},
+		{"YKS", "MOW", "Якутск - Москва"},
+		{"LED", "YKS", "Санкт-Петербург - Якутск"},
+		{"YKS", "LED", "Якутск - Санкт-Петербург"},
+		{"SVX", "YKS", "Екатеринбург - Якутск"},
+		{"YKS", "SVX", "Якутск - Екатеринбург"},
+		{"KJA", "YKS", "Красноярск - Якутск"},
+		{"YKS", "KJA", "Якутск - Красноярск"},
+		{"IKT", "YKS", "Иркутск - Якутск"},
+		{"YKS", "IKT", "Якутск - Иркутск"},
+		{"NSK", "YKS", "Новосибирск - Якутск"},
+		{"YKS", "NSK", "Якутск - Новосибирск"},
+
+		// Внутренние маршруты Якутии (основные города)
+		{"YKS", "MJZ", "Якутск - Мирный"},
+		{"MJZ", "YKS", "Мирный - Якутск"},
+		{"YKS", "ULK", "Якутск - Ленск"},
+		{"ULK", "YKS", "Ленск - Якутск"},
+		{"YKS", "NER", "Якутск - Нерюнгри"},
+		{"NER", "YKS", "Нерюнгри - Якутск"},
+		{"YKS", "CKH", "Якутск - Чокурдах"},
+		{"CKH", "YKS", "Чокурдах - Якутск"},
+		{"YKS", "SUK", "Якутск - Саккырыр"},
+		{"SUK", "YKS", "Саккырыр - Якутск"},
+		{"YKS", "UMS", "Якутск - Усть-Мая"},
+		{"UMS", "YKS", "Усть-Мая - Якутск"},
+		{"YKS", "VYI", "Якутск - Вилюйск"},
+		{"VYI", "YKS", "Вилюйск - Якутск"},
+		{"YKS", "DKS", "Якутск - Диксон"},
+		{"DKS", "YKS", "Диксон - Якутск"},
+
+		// Дальний Восток - Якутск
+		{"VVO", "YKS", "Владивосток - Якутск"},
+		{"YKS", "VVO", "Якутск - Владивосток"},
+		{"HBR", "YKS", "Хабаровск - Якутск"},
+		{"YKS", "HBR", "Якутск - Хабаровск"},
+		{"PKC", "YKS", "Петропавловск-Камчатский - Якутск"},
+		{"YKS", "PKC", "Якутск - Петропавловск-Камчатский"},
+		{"UUS", "YKS", "Южно-Сахалинск - Якутск"},
+		{"YKS", "UUS", "Якутск - Южно-Сахалинск"},
+		{"GDX", "YKS", "Магадан - Якутск"},
+		{"YKS", "GDX", "Якутск - Магадан"},
+
+		// Дополнительные маршруты из Москвы (для транзита)
+		{"MOW", "KJA", "Москва - Красноярск"},
+		{"MOW", "IKT", "Москва - Иркутск"},
+		{"MOW", "NSK", "Москва - Новосибирск"},
+		{"MOW", "VVO", "Москва - Владивосток"},
+		{"MOW", "HBR", "Москва - Хабаровск"},
 	}
 
 	segmentsCount := 0
-	for _, route := range popularRoutes {
+	for _, route := range yakutiaRoutes {
 		// Get flights for the next month
 		departureDate := time.Now().Format("2006-01")
 
+		log.Printf("Fetching flights for %s (%s → %s)", route.description, route.origin, route.destination)
 		flights, err := s.aviasalesClient.GetPrices(ctx, route.origin, route.destination, departureDate)
 		if err != nil {
-			log.Printf("Error fetching flights for %s-%s: %v", route.origin, route.destination, err)
+			log.Printf("Warning: Error fetching flights for %s: %v", route.description, err)
 			continue
 		}
 
