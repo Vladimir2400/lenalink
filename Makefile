@@ -19,6 +19,10 @@ help:
 	@echo "  make db-reset-with-data    - db-reset + load test data from scripts/"
 	@echo "  make db-drop               - Drop database only"
 	@echo "  make db-create             - Create database only"
+	@echo "  make seed                  - Sync data from external providers (GARS, Aviasales, RZD)"
+	@echo "  make seed-gars             - Sync only GARS data"
+	@echo "  make seed-aviasales        - Sync only Aviasales data"
+	@echo "  make seed-rzd              - Sync only RZD data"
 	@echo "  make docker-up             - Start PostgreSQL with docker-compose"
 	@echo "  make docker-down           - Stop PostgreSQL containers"
 	@echo "  make docker-logs           - View PostgreSQL logs"
@@ -121,3 +125,20 @@ psql:
 pgadmin:
 	@echo "pgAdmin is available at http://localhost:15050"
 	@echo "Default credentials: admin@lenalink.com / admin"
+
+# Seed commands - sync data from external providers
+seed:
+	@echo "🌱 Seeding database from all providers..."
+	go run ./cmd/seed
+
+seed-gars:
+	@echo "🌱 Seeding database from GARS only..."
+	SYNC_PROVIDER=gars go run ./cmd/seed
+
+seed-aviasales:
+	@echo "🌱 Seeding database from Aviasales only..."
+	SYNC_PROVIDER=aviasales go run ./cmd/seed
+
+seed-rzd:
+	@echo "🌱 Seeding database from RZD only..."
+	SYNC_PROVIDER=rzd go run ./cmd/seed

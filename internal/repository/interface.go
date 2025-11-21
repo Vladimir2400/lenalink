@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"time"
+
 	"github.com/lenalink/backend/internal/domain"
 )
 
@@ -73,4 +75,46 @@ type TransactionManager interface {
 	// WithTransaction executes a function within a transaction
 	// Automatically commits on success, rolls back on error
 	WithTransaction(ctx context.Context, fn func(tx Transaction) error) error
+}
+
+// StopRepository defines operations for stop persistence
+type StopRepository interface {
+	// Save stores a new stop
+	Save(ctx context.Context, stop *domain.Stop) error
+
+	// Upsert inserts or updates a stop (by unique key name+city)
+	Upsert(ctx context.Context, stop *domain.Stop) error
+
+	// FindByID retrieves a stop by ID
+	FindByID(ctx context.Context, id string) (*domain.Stop, error)
+
+	// FindByCity retrieves all stops in a city
+	FindByCity(ctx context.Context, city string) ([]domain.Stop, error)
+
+	// FindByCoordinates finds stops within radius (km) from given coordinates
+	FindByCoordinates(ctx context.Context, lat, lon float64, radiusKm int) ([]domain.Stop, error)
+
+	// FindAll retrieves all stops
+	FindAll(ctx context.Context) ([]domain.Stop, error)
+}
+
+// SegmentRepository defines operations for segment persistence
+type SegmentRepository interface {
+	// Save stores a new segment
+	Save(ctx context.Context, segment *domain.Segment) error
+
+	// BatchSave stores multiple segments in a single transaction
+	BatchSave(ctx context.Context, segments []domain.Segment) error
+
+	// FindByID retrieves a segment by ID
+	FindByID(ctx context.Context, id string) (*domain.Segment, error)
+
+	// FindByCriteria searches segments by origin, destination, and date range
+	FindByCriteria(ctx context.Context, fromCity, toCity string, departureStart, departureEnd time.Time) ([]domain.Segment, error)
+
+	// DeleteOldSegments removes segments older than specified date
+	DeleteOldSegments(ctx context.Context, beforeDate time.Time) error
+
+	// FindAll retrieves all segments
+	FindAll(ctx context.Context) ([]domain.Segment, error)
 }
