@@ -51,7 +51,7 @@ if crontab -l 2>/dev/null | grep -F "docker compose run --rm seed" > /dev/null; 
     echo -e "  # Then delete the line containing 'docker compose run --rm seed'\n"
 else
     # Add to crontab
-    (crontab -l 2>/dev/null; echo "$CRON_ENTRY") | crontab -
+    { crontab -l 2>/dev/null || true; echo "$CRON_ENTRY"; } | crontab -
     echo -e "${GREEN}✓${NC} Cron job added successfully!"
 fi
 
