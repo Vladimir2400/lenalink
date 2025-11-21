@@ -1,6 +1,9 @@
 services:
-  app:
+  # Main HTTP server (always running)
+  server:
     build: ./
+    container_name: lenalink_server
+    command: ["server"]
     restart: always
     ports:
       - "8080:8080"
@@ -13,6 +16,21 @@ services:
       - lenalink_network
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  # Data synchronization tool (run manually or via cron)
+  seed:
+    build: ./
+    container_name: lenalink_seed
+    command: ["seed"]
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lenalink_network
+    profiles:
+      - tools  # Does not start automatically with 'docker-compose up'
   # PostgreSQL database
   postgres:
     image: postgres:15-alpine
