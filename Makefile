@@ -6,25 +6,42 @@ DB_PASSWORD=password
 DB_NAME=lenalink_db
 DB_HOST=localhost
 DB_PORT=15432
+# For local use (from host machine)
 DB_URL=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
+# For Docker use (from within containers)
+DB_URL_DOCKER=postgres://$(DB_USER):$(DB_PASSWORD)@postgres:5432/$(DB_NAME)?sslmode=disable
 
 help:
 	@echo "Available commands:"
-	@echo "  make migrate-up            - Apply all pending migrations"
-	@echo "  make migrate-down          - Rollback last migration"
-	@echo "  make migrate-force         - Force migration version (use VERSION=N)"
-	@echo "  make migrate-version       - Show current migration version"
+	@echo ""
+	@echo "🐳 Docker Migration Commands (recommended for production):"
+	@echo "  make migrate-up            - Apply all pending migrations via Docker"
+	@echo "  make migrate-down          - Rollback last migration via Docker"
+	@echo "  make migrate-force         - Force migration version via Docker (use VERSION=N)"
+	@echo "  make migrate-version       - Show current migration version via Docker"
+	@echo ""
+	@echo "💻 Local Migration Commands (requires golang-migrate CLI):"
+	@echo "  make migrate-up-local      - Apply all pending migrations locally"
+	@echo "  make migrate-down-local    - Rollback last migration locally"
+	@echo "  make migrate-force-local   - Force migration version locally (use VERSION=N)"
+	@echo "  make migrate-version-local - Show current migration version locally"
+	@echo ""
+	@echo "📦 Database Management:"
 	@echo "  make migrate-create        - Create new migration (use NAME=migration_name)"
 	@echo "  make db-reset              - Drop, recreate database and apply migrations"
 	@echo "  make db-reset-with-data    - db-reset + load test data from scripts/"
 	@echo "  make db-drop               - Drop database only"
 	@echo "  make db-create             - Create database only"
+	@echo ""
+	@echo "🌱 Data Seeding:"
 	@echo "  make seed                  - Sync data from external providers (GARS, Aviasales, RZD)"
 	@echo "  make seed-gars             - Sync only GARS data"
 	@echo "  make seed-aviasales        - Sync only Aviasales data"
 	@echo "  make seed-rzd              - Sync only RZD data"
-	@echo "  make docker-up             - Start PostgreSQL with docker-compose"
-	@echo "  make docker-down           - Stop PostgreSQL containers"
+	@echo ""
+	@echo "🐳 Docker Commands:"
+	@echo "  make docker-up             - Start all services with docker-compose"
+	@echo "  make docker-down           - Stop all containers"
 	@echo "  make docker-logs           - View PostgreSQL logs"
 
 # Docker commands
@@ -41,23 +58,45 @@ docker-ps:
 	docker-compose ps
 
 # Database migration commands
+# These commands use Docker container for migrations
 migrate-up:
-	@echo "Applying migrations..."
-	migrate -path migrations -database "$(DB_URL)" up
+	@echo "Applying migrations via Docker..."
+	docker compose run --rm migrate -path=/migrations -database "$(DB_URL_DOCKER)" up
 
 migrate-down:
-	@echo "Rolling back last migration..."
-	migrate -path migrations -database "$(DB_URL)" down 1
+	@echo "Rolling back last migration via Docker..."
+	docker compose run --rm migrate -path=/migrations -database "$(DB_URL_DOCKER)" down 1
 
 migrate-force:
 	@if [ -z "$(VERSION)" ]; then \
 		echo "Usage: make migrate-force VERSION=N"; \
 		exit 1; \
 	fi
-	@echo "Forcing migration to version $(VERSION)..."
-	migrate -path migrations -database "$(DB_URL)" force $(VERSION)
+	@echo "Forcing migration to version $(VERSION) via Docker..."
+	docker compose run --rm migrate -path=/migrations -database "$(DB_URL_DOCKER)" force $(VERSION)
 
 migrate-version:
+	@echo "Current migration version:"
+	docker compose run --rm migrate -path=/migrations -database "$(DB_URL_DOCKER)" version
+
+# Alternative: Local migration commands (requires golang-migrate CLI installed)
+migrate-up-local:
+	@echo "Applying migrations locally..."
+	migrate -path migrations -database "$(DB_URL)" up
+
+migrate-down-local:
+	@echo "Rolling back last migration locally..."
+	migrate -path migrations -database "$(DB_URL)" down 1
+
+migrate-force-local:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Usage: make migrate-force VERSION=N"; \
+		exit 1; \
+	fi
+	@echo "Forcing migration to version $(VERSION) locally..."
+	migrate -path migrations -database "$(DB_URL)" force $(VERSION)
+
+migrate-version-local:
 	@echo "Current migration version:"
 	migrate -path migrations -database "$(DB_URL)" version
 

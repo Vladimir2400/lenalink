@@ -17,6 +17,20 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # Database migration tool (run manually)
+  migrate:
+    image: migrate/migrate:latest
+    container_name: lenalink_migrate
+    volumes:
+      - ./migrations:/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lenalink_network
+    profiles:
+      - tools  # Does not start automatically with 'docker-compose up'
+
   # Data synchronization tool (run manually or via cron)
   seed:
     build: ./
