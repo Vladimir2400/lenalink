@@ -318,6 +318,10 @@ func (s *service) syncAviasalesData(ctx context.Context) error {
 			continue
 		}
 
+		// Rate limiting: API limit is 300 req/min
+		// Sleep for 200ms between requests (~5 req/sec = 300 req/min)
+		time.Sleep(200 * time.Millisecond)
+
 		log.Printf("Fetched %d flights for %s-%s", len(flights), route.origin, route.destination)
 
 		// Convert flights to segments
