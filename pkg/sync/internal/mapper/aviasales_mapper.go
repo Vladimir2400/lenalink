@@ -11,43 +11,64 @@ import (
 
 // AviasalesAirportToDomain converts Aviasales Airport to domain.Stop
 func AviasalesAirportToDomain(airport aviasales.Airport) (*domain.Stop, error) {
+	// Use English name if available, otherwise use default name
+	name := airport.Name
+	if airport.NameTranslations.En != "" {
+		name = airport.NameTranslations.En
+	}
+
 	return &domain.Stop{
 		ID:        airport.Code, // Use IATA code as ID
-		Name:      airport.Name,
-		City:      airport.CityName,
-		Latitude:  airport.Latitude,
-		Longitude: airport.Longitude,
+		Name:      name,
+		City:      airport.CityCode, // Use city code as city name
+		Latitude:  airport.Coordinates.Lat,
+		Longitude: airport.Coordinates.Lon,
 	}, nil
 }
 
-// AviasalesFlightToSegment converts Aviasales Flight to domain.Segment
+// AviasalesFlightToSegment converts Aviasales Flight to domain.Segment.
+// Note: Flight origin/destination are city codes, not airport codes.
+// We use airports map to find the main airport for each city.
 func AviasalesFlightToSegment(flight aviasales.Flight, airports map[string]aviasales.Airport) (*domain.Segment, error) {
-	// Get origin and destination airports
-	originAirport, ok := airports[flight.OriginAirport]
-	if !ok {
-		return nil, fmt.Errorf("origin airport not found: %s", flight.OriginAirport)
+	// Find airports by city code (origin/destination are city codes in latest prices API)
+	var originAirport, destAirport *aviasales.Airport
+
+	for _, airport := range airports {
+		if airport.CityCode == flight.Origin && originAirport == nil {
+			a := airport
+			originAirport = &a
+		}
+		if airport.CityCode == flight.Destination && destAirport == nil {
+			a := airport
+			destAirport = &a
+		}
+		if originAirport != nil && destAirport != nil {
+			break
+		}
 	}
 
-	destAirport, ok := airports[flight.DestinationAirport]
-	if !ok {
-		return nil, fmt.Errorf("destination airport not found: %s", flight.DestinationAirport)
+	if originAirport == nil {
+		return nil, fmt.Errorf("no airport found for origin city: %s", flight.Origin)
+	}
+	if destAirport == nil {
+		return nil, fmt.Errorf("no airport found for destination city: %s", flight.Destination)
 	}
 
 	// Convert airports to stops
-	startStop, err := AviasalesAirportToDomain(originAirport)
+	startStop, err := AviasalesAirportToDomain(*originAirport)
 	if err != nil {
 		return nil, fmt.Errorf("error converting origin airport: %w", err)
 	}
 
-	endStop, err := AviasalesAirportToDomain(destAirport)
+	endStop, err := AviasalesAirportToDomain(*destAirport)
 	if err != nil {
 		return nil, fmt.Errorf("error converting destination airport: %w", err)
 	}
 
-	// Parse departure time
-	departureTime, err := time.Parse(time.RFC3339, flight.DepartureAt)
+	// Parse departure date (format: "2025-11-25")
+	departureTime, err := time.Parse("2006-01-02", flight.DepartDate)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing departure time: %w", err)
+		return nil, fmt.Errorf("error parsing departure date: %w", err)
 	}
 
 	// Calculate arrival time from duration
@@ -56,22 +77,19 @@ func AviasalesFlightToSegment(flight aviasales.Flight, airports map[string]avias
 	// Generate segment ID
 	segmentID := uuid.New().String()
 
-	// Calculate distance (approximate - not provided by Aviasales)
-	distance := estimateDistance(startStop.Latitude, startStop.Longitude, endStop.Latitude, endStop.Longitude)
-
 	return &domain.Segment{
 		ID:              segmentID,
 		TransportType:   domain.TransportAir,
-		Provider:        fmt.Sprintf("Aviasales (%s)", flight.Airline),
+		Provider:        fmt.Sprintf("Aviasales (%s)", flight.Gate),
 		StartStop:       *startStop,
 		EndStop:         *endStop,
 		DepartureTime:   departureTime,
 		ArrivalTime:     arrivalTime,
-		Price:           flight.Price,
+		Price:           flight.Value,
 		Duration:        time.Duration(flight.Duration) * time.Minute,
-		SeatCount:       flight.AvailableSeats,
+		SeatCount:       100, // Default seat count as not provided by API
 		ReliabilityRate: 90.0, // Default reliability rate for airlines
-		Distance:        distance,
+		Distance:        flight.Distance,
 	}, nil
 }
 

@@ -71,34 +71,30 @@ func NewClient(cfg Config) (*Client, error) {
 
 // GetAirports retrieves list of all airports.
 func (c *Client) GetAirports(ctx context.Context) ([]Airport, error) {
-	endpoint := "/data/en/airports.json"
+	// Note: airports endpoint is at /data, not /v2/data
+	// This endpoint returns a plain array, not wrapped in success/data
+	endpoint := "/../data/en/airports.json"
 
-	var response AirportsResponse
-	if err := c.get(ctx, endpoint, nil, &response); err != nil {
+	var airports []Airport
+	if err := c.get(ctx, endpoint, nil, &airports); err != nil {
 		return nil, err
 	}
 
-	if !response.Success {
-		return nil, errors.New("aviasales API returned success=false")
-	}
-
-	return response.Data, nil
+	return airports, nil
 }
 
 // GetCities retrieves list of all cities.
 func (c *Client) GetCities(ctx context.Context) ([]City, error) {
-	endpoint := "/data/en/cities.json"
+	// Note: cities endpoint is at /data, not /v2/data
+	// This endpoint returns a plain array, not wrapped in success/data
+	endpoint := "/../data/en/cities.json"
 
-	var response CitiesResponse
-	if err := c.get(ctx, endpoint, nil, &response); err != nil {
+	var cities []City
+	if err := c.get(ctx, endpoint, nil, &cities); err != nil {
 		return nil, err
 	}
 
-	if !response.Success {
-		return nil, errors.New("aviasales API returned success=false")
-	}
-
-	return response.Data, nil
+	return cities, nil
 }
 
 // GetPrices retrieves flight prices for a specific route.

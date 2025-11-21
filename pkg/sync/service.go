@@ -210,7 +210,7 @@ func (s *service) syncAviasalesData(ctx context.Context) error {
 	// Filter only Russian airports for now
 	russianAirports := []aviasales.Airport{}
 	for _, airport := range airports {
-		if airport.CountryCode == "RU" && airport.IsActive {
+		if airport.CountryCode == "RU" && airport.Flightable && airport.IataType == "airport" {
 			russianAirports = append(russianAirports, airport)
 		}
 	}
@@ -218,11 +218,19 @@ func (s *service) syncAviasalesData(ctx context.Context) error {
 	log.Printf("Found %d active Russian airports", len(russianAirports))
 
 	// Convert and save airports as stops
-	airportsCount := 0
+	// Build map of all airports (not just Russian) for flight conversion
+	// Use CityCode as key since flight API uses city codes
 	airportMap := make(map[string]aviasales.Airport)
-	for _, airport := range russianAirports {
-		airportMap[airport.Code] = airport
+	for _, airport := range airports {
+		// Store the first airport for each city code
+		if _, exists := airportMap[airport.CityCode]; !exists {
+			airportMap[airport.CityCode] = airport
+		}
+	}
 
+	// Save Russian airports to database
+	airportsCount := 0
+	for _, airport := range russianAirports {
 		domainStop, err := mapper.AviasalesAirportToDomain(airport)
 		if err != nil {
 			log.Printf("Error converting airport %s: %v", airport.Code, err)
@@ -237,6 +245,7 @@ func (s *service) syncAviasalesData(ctx context.Context) error {
 	}
 
 	log.Printf("Saved %d airports from Aviasales", airportsCount)
+	log.Printf("Built airport map with %d cities for flight conversion", len(airportMap))
 
 	// Fetch flight prices for Yakutia routes
 	// Focus on routes connecting Yakutia with major cities and internal Yakutia routes
@@ -316,7 +325,7 @@ func (s *service) syncAviasalesData(ctx context.Context) error {
 		for _, flight := range flights {
 			segment, err := mapper.AviasalesFlightToSegment(flight, airportMap)
 			if err != nil {
-				log.Printf("Error converting flight %s: %v", flight.ID, err)
+				log.Printf("Error converting flight %s→%s on %s: %v", flight.Origin, flight.Destination, flight.DepartDate, err)
 				continue
 			}
 			segments = append(segments, *segment)

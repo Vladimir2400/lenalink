@@ -45,7 +45,7 @@ func (r *SegmentRepository) Save(ctx context.Context, segment *domain.Segment) e
 		segment.SeatCount,
 		segment.ReliabilityRate,
 		segment.Distance,
-		0, // sequence_order is 0 for standalone segments
+		nil, // sequence_order is NULL for standalone segments
 	)
 
 	if err != nil {
@@ -102,7 +102,7 @@ func (r *SegmentRepository) BatchSave(ctx context.Context, segments []domain.Seg
 			segment.SeatCount,
 			segment.ReliabilityRate,
 			segment.Distance,
-			0, // sequence_order
+			nil, // sequence_order is NULL for standalone segments
 		)
 		if err != nil {
 			return fmt.Errorf("error executing batch insert: %w", err)
