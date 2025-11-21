@@ -153,7 +153,8 @@ func (s *service) syncGarsData(ctx context.Context) error {
 	segmentsCount := 0
 	for _, schedule := range tripSchedules {
 		// Fetch stops for this trip
-		tripStops, _, err := garsService.TripScheduleStops(ctx, gars.WithFilter(fmt.Sprintf("TripScheduleKey eq '%s'", schedule.RefKey)))
+		// Note: Use Ref_Key (parent reference), not TripScheduleKey
+		tripStops, _, err := garsService.TripScheduleStops(ctx, gars.WithFilter(fmt.Sprintf("Ref_Key eq guid'%s'", schedule.RefKey)))
 		if err != nil {
 			log.Printf("Warning: Error fetching stops for schedule %s: %v", schedule.RefKey, err)
 			continue
@@ -169,7 +170,8 @@ func (s *service) syncGarsData(ctx context.Context) error {
 
 			// Try to fetch fare information (optional)
 			var fare *gars.Fare
-			fares, _, err := garsService.Fares(ctx, gars.WithFilter(fmt.Sprintf("TripScheduleKey eq '%s'", schedule.RefKey)), gars.WithTop(1))
+			// Note: Use РейсРасписание_Key in Fares table
+			fares, _, err := garsService.Fares(ctx, gars.WithFilter(fmt.Sprintf("РейсРасписание_Key eq guid'%s'", schedule.RefKey)), gars.WithTop(1))
 			if err == nil && len(fares) > 0 {
 				fare = &fares[0]
 			}
