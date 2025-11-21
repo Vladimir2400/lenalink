@@ -13,7 +13,7 @@ import (
 
 const (
 	// DefaultBaseURL is the default Aviasales Data API base URL.
-	DefaultBaseURL = "https://api.travelpayouts.com/v2"
+	DefaultBaseURL = "https://api.travelpayouts.com/v3"
 	// DefaultHTTPTimeout defines default timeout for HTTP client.
 	DefaultHTTPTimeout = 30 * time.Second
 )
