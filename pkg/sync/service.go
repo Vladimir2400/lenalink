@@ -154,7 +154,7 @@ func (s *service) syncGarsData(ctx context.Context) error {
 	for _, schedule := range tripSchedules {
 		// Fetch stops for this trip
 		// Note: Use Ref_Key (parent reference), not TripScheduleKey
-		tripStops, _, err := garsService.TripScheduleStops(ctx, gars.WithFilter(fmt.Sprintf("Ref_Key eq guid'%s'", schedule.RefKey)))
+		tripStops, _, err := garsService.TripScheduleStops(ctx, gars.WithFilter(fmt.Sprintf("Ref_Key eq guid'%s'", schedule.RefKey))) // TODO: ошибка TripSchedule не хранит Ref_Key
 		if err != nil {
 			log.Printf("Warning: Error fetching stops for schedule %s: %v", schedule.RefKey, err)
 			continue
