@@ -46,7 +46,7 @@ func NewBookingService(
 }
 
 // CreateBooking creates a multi-segment booking with ACID transaction
-func (bs *BookingService) CreateBooking(ctx context.Context, routeID string, passenger domain.Passenger, includeInsurance bool, paymentMethod domain.PaymentMethod) (*domain.Booking, error) {
+func (bs *BookingService) CreateBooking(ctx context.Context, userID, routeID string, passenger domain.Passenger, includeInsurance bool, paymentMethod domain.PaymentMethod) (*domain.Booking, error) {
 	// 1. Fetch route
 	route, err := bs.routeRepo.FindByID(ctx, routeID)
 	if err != nil {
@@ -60,6 +60,7 @@ func (bs *BookingService) CreateBooking(ctx context.Context, routeID string, pas
 	// 2. Create booking
 	booking := &domain.Booking{
 		ID:               utils.GenerateID(),
+		UserID:           userID,
 		RouteID:          routeID,
 		Passenger:        passenger,
 		Segments:         make([]domain.BookedSegment, 0, len(route.Segments)),
@@ -122,7 +123,7 @@ func (bs *BookingService) CreateBooking(ctx context.Context, routeID string, pas
 			Price:              basePrice,
 			Commission:         commission,
 			TotalPrice:         totalPrice,
-			BookingStatus:      domain.BookingConfirmed,
+			BookingStatus:      domain.BookingInProgress,
 			ProviderBookingRef: bookingRef,
 		}
 
@@ -151,7 +152,7 @@ func (bs *BookingService) CreateBooking(ctx context.Context, routeID string, pas
 		booking.Status = domain.BookingPendingPayment
 	} else {
 		// Payment completed immediately (mock gateway or instant confirmation)
-		booking.MarkAsConfirmed()
+		booking.MarkAsInProgress()
 	}
 
 	// 8. Save booking
@@ -178,6 +179,11 @@ func (bs *BookingService) GetBooking(ctx context.Context, bookingID string) (*do
 	return bs.bookingRepo.FindByID(ctx, bookingID)
 }
 
+// GetUserBookings retrieves all bookings for a specific user
+func (bs *BookingService) GetUserBookings(ctx context.Context, userID string) ([]domain.Booking, error) {
+	return bs.bookingRepo.FindByUserID(ctx, userID)
+}
+
 // UpdateBooking updates an existing booking (used by webhook handler)
 func (bs *BookingService) UpdateBooking(ctx context.Context, booking *domain.Booking) error {
 	booking.UpdatedAt = time.Now()
@@ -191,7 +197,7 @@ func (bs *BookingService) CancelBooking(ctx context.Context, bookingID string, r
 		return fmt.Errorf("booking not found: %w", err)
 	}
 
-	if booking.Status != domain.BookingConfirmed {
+	if booking.Status != domain.BookingInProgress {
 		return fmt.Errorf("cannot cancel booking with status: %s", booking.Status)
 	}
 

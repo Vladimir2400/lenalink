@@ -50,6 +50,9 @@ type BookingRepository interface {
 
 	// FindByStatus finds bookings by status
 	FindByStatus(ctx context.Context, status domain.BookingStatus) ([]domain.Booking, error)
+
+	// FindByUserID finds bookings by user ID
+	FindByUserID(ctx context.Context, userID string) ([]domain.Booking, error)
 }
 
 // Transaction represents a database transaction for ACID guarantees
@@ -94,8 +97,26 @@ type StopRepository interface {
 	// FindByCoordinates finds stops within radius (km) from given coordinates
 	FindByCoordinates(ctx context.Context, lat, lon float64, radiusKm int) ([]domain.Stop, error)
 
+	// FindCitiesByName searches for distinct cities by partial name match
+	FindCitiesByName(ctx context.Context, namePrefix string) ([]domain.Stop, error)
+
 	// FindAll retrieves all stops
 	FindAll(ctx context.Context) ([]domain.Stop, error)
+}
+
+// UserRepository defines operations for user persistence
+type UserRepository interface {
+	// Save stores a new user
+	Save(ctx context.Context, user *domain.User) error
+
+	// FindByID retrieves a user by ID
+	FindByID(ctx context.Context, id string) (*domain.User, error)
+
+	// FindByEmail retrieves a user by email
+	FindByEmail(ctx context.Context, email string) (*domain.User, error)
+
+	// UpdateLastLogin updates the last login timestamp
+	UpdateLastLogin(ctx context.Context, id string) error
 }
 
 // SegmentRepository defines operations for segment persistence

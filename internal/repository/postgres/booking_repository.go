@@ -23,7 +23,7 @@ func NewBookingRepository(db *Database) repository.BookingRepository {
 // FindByID retrieves a booking with all details
 func (r *BookingRepository) FindByID(ctx context.Context, id string) (*domain.Booking, error) {
 	const query = `
-		SELECT id, route_id, status, total_price, total_commission, grand_total,
+		SELECT id, user_id, route_id, status, total_price, total_commission, grand_total,
 		       insurance_premium, include_insurance, created_at, updated_at,
 		       confirmed_at, cancelled_at, cancellation_reason,
 		       passenger_first_name, passenger_last_name, passenger_middle_name,
@@ -34,11 +34,13 @@ func (r *BookingRepository) FindByID(ctx context.Context, id string) (*domain.Bo
 	`
 
 	var booking domain.Booking
+	var userID sql.NullString
 	var confirmedAt, cancelledAt sql.NullTime
 	var middleName, cancellationReason sql.NullString
 
 	err := r.db.db.QueryRowContext(ctx, query, id).Scan(
 		&booking.ID,
+		&userID,
 		&booking.RouteID,
 		&booking.Status,
 		&booking.TotalPrice,
@@ -68,6 +70,9 @@ func (r *BookingRepository) FindByID(ctx context.Context, id string) (*domain.Bo
 	}
 
 	// Set nullable fields
+	if userID.Valid {
+		booking.UserID = userID.String
+	}
 	if middleName.Valid {
 		booking.Passenger.MiddleName = middleName.String
 	}
@@ -308,7 +313,7 @@ func (r *BookingRepository) FindByStatus(ctx context.Context, status domain.Book
 func (r *BookingRepository) Save(ctx context.Context, booking *domain.Booking) error {
 	const query = `
 		INSERT INTO bookings (
-			id, route_id, status, total_price, total_commission, grand_total,
+			id, user_id, route_id, status, total_price, total_commission, grand_total,
 			insurance_premium, include_insurance, created_at, updated_at,
 			confirmed_at, cancelled_at, cancellation_reason,
 			passenger_first_name, passenger_last_name, passenger_middle_name,
@@ -316,12 +321,18 @@ func (r *BookingRepository) Save(ctx context.Context, booking *domain.Booking) e
 			passenger_email, passenger_phone
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-			$11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+			$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
 		)
 	`
 
+	var userID *string
+	if booking.UserID != "" {
+		userID = &booking.UserID
+	}
+
 	_, err := r.db.db.ExecContext(ctx, query,
 		booking.ID,
+		userID,
 		booking.RouteID,
 		string(booking.Status),
 		booking.TotalPrice,
@@ -630,4 +641,89 @@ func (r *BookingRepository) updatePayment(ctx context.Context, payment *domain.P
 	}
 
 	return nil
+}
+
+// FindByUserID finds bookings by user ID
+func (r *BookingRepository) FindByUserID(ctx context.Context, userID string) ([]domain.Booking, error) {
+	const query = `
+		SELECT id, user_id, route_id, status, total_price, total_commission, grand_total,
+		       insurance_premium, include_insurance, created_at, updated_at,
+		       confirmed_at, cancelled_at, cancellation_reason,
+		       passenger_first_name, passenger_last_name, passenger_middle_name,
+		       passenger_date_of_birth, passenger_passport_number,
+		       passenger_email, passenger_phone
+		FROM bookings
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.db.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error querying bookings by user: %w", err)
+	}
+	defer rows.Close()
+
+	var bookings []domain.Booking
+	for rows.Next() {
+		var booking domain.Booking
+		var userIDVal sql.NullString
+		var confirmedAt, cancelledAt sql.NullTime
+		var middleName, cancellationReason sql.NullString
+
+		if err := rows.Scan(
+			&booking.ID,
+			&userIDVal,
+			&booking.RouteID,
+			&booking.Status,
+			&booking.TotalPrice,
+			&booking.TotalCommission,
+			&booking.GrandTotal,
+			&booking.InsurancePremium,
+			&booking.IncludeInsurance,
+			&booking.CreatedAt,
+			&booking.UpdatedAt,
+			&confirmedAt,
+			&cancelledAt,
+			&cancellationReason,
+			&booking.Passenger.FirstName,
+			&booking.Passenger.LastName,
+			&middleName,
+			&booking.Passenger.DateOfBirth,
+			&booking.Passenger.PassportNumber,
+			&booking.Passenger.Email,
+			&booking.Passenger.Phone,
+		); err != nil {
+			return nil, fmt.Errorf("error scanning booking: %w", err)
+		}
+
+		if userIDVal.Valid {
+			booking.UserID = userIDVal.String
+		}
+		if middleName.Valid {
+			booking.Passenger.MiddleName = middleName.String
+		}
+		if confirmedAt.Valid {
+			booking.ConfirmedAt = &confirmedAt.Time
+		}
+		if cancelledAt.Valid {
+			booking.CancelledAt = &cancelledAt.Time
+		}
+		if cancellationReason.Valid {
+			booking.CancellationReason = cancellationReason.String
+		}
+
+		// Fetch booked segments for each booking
+		if err := r.fetchBookedSegments(ctx, &booking); err != nil {
+			return nil, err
+		}
+
+		// Fetch payment if exists
+		if err := r.fetchPayment(ctx, &booking); err != nil {
+			return nil, err
+		}
+
+		bookings = append(bookings, booking)
+	}
+
+	return bookings, rows.Err()
 }

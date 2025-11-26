@@ -8,6 +8,7 @@ import (
 
 	"github.com/lenalink/backend/internal/domain"
 	"github.com/lenalink/backend/internal/handler/http/dto"
+	"github.com/lenalink/backend/internal/handler/http/middleware"
 	"github.com/lenalink/backend/internal/service"
 )
 
@@ -61,9 +62,17 @@ func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract user_id from context (set by auth middleware)
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		h.errorHandler.RespondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		return
+	}
+
 	// Create booking
 	booking, err := h.bookingService.CreateBooking(
 		r.Context(),
+		userID,
 		req.RouteID,
 		passenger,
 		req.IncludeInsurance,
@@ -166,6 +175,36 @@ func (h *BookingHandler) ListBookings(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]interface{}{
 		"total":    len(bookings),
 		"bookings": summaries,
+	}
+
+	h.errorHandler.RespondWithJSON(w, http.StatusOK, resp)
+}
+
+// GetMyRoutes handles GET /api/my_routes - returns bookings for authenticated user
+func (h *BookingHandler) GetMyRoutes(w http.ResponseWriter, r *http.Request) {
+	// Extract user_id from context (set by auth middleware)
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		h.errorHandler.RespondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		return
+	}
+
+	// Fetch user's bookings
+	bookings, err := h.bookingService.GetUserBookings(r.Context(), userID)
+	if err != nil {
+		h.errorHandler.RespondWithDomainError(w, err)
+		return
+	}
+
+	// Convert to response
+	responses := make([]dto.BookingResponse, 0, len(bookings))
+	for _, booking := range bookings {
+		responses = append(responses, ToBookingResponse(&booking))
+	}
+
+	resp := map[string]interface{}{
+		"total":    len(responses),
+		"bookings": responses,
 	}
 
 	h.errorHandler.RespondWithJSON(w, http.StatusOK, resp)

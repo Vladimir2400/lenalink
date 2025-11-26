@@ -72,11 +72,20 @@ func main() {
 	log.Println("🗄️  Initializing repositories...")
 	routeRepo := postgres.NewRouteRepository(db)
 	bookingRepo := postgres.NewBookingRepository(db)
+	stopRepo := postgres.NewStopRepository(db)
+	userRepo := postgres.NewUserRepository(db)
 	log.Println("✓ Repositories initialized")
 
 	// Initialize services
 	log.Println("⚙️  Initializing services...")
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "default-secret-change-in-production" // Default for development
+		log.Println("⚠️  WARNING: Using default JWT secret. Set JWT_SECRET env var in production!")
+	}
+	authService := service.NewAuthService(userRepo, jwtSecret)
 	routeService := service.NewRouteService(routeRepo)
+	cityService := service.NewCityService(stopRepo)
 	commissionSvc := service.NewCommissionService(service.DefaultCommissionConfig())
 	insuranceSvc := service.NewInsuranceService(service.DefaultInsuranceConfig())
 
@@ -110,7 +119,7 @@ func main() {
 
 	// Initialize router with handlers
 	log.Println("🛣️  Setting up HTTP routes...")
-	router := httphandler.NewRouter(routeService, bookingService, paymentSvc)
+	router := httphandler.NewRouter(authService, routeService, cityService, bookingService, paymentSvc)
 	log.Println("✓ HTTP routes configured")
 
 	// Server configuration

@@ -6,12 +6,10 @@ import "time"
 type BookingStatus string
 
 const (
-	BookingPending        BookingStatus = "pending"         // Awaiting payment
-	BookingPendingPayment BookingStatus = "pending_payment" // Waiting for user to complete payment (YooKassa redirect)
-	BookingConfirmed      BookingStatus = "confirmed"       // Payment successful, all segments booked
-	BookingFailed         BookingStatus = "failed"          // Booking or payment failed
-	BookingCancelled      BookingStatus = "cancelled"       // User cancelled
-	BookingRefunded       BookingStatus = "refunded"        // Refund processed
+	BookingPending    BookingStatus = "pending"     // Awaiting payment
+	BookingInProgress BookingStatus = "in_progress" // Confirmed and active (journey ongoing or upcoming)
+	BookingCompleted  BookingStatus = "completed"   // Journey finished
+	BookingCancelled  BookingStatus = "cancelled"   // User cancelled or failed
 )
 
 // PaymentStatus represents the status of a payment
@@ -80,22 +78,23 @@ type Payment struct {
 
 // Booking represents a complete multi-segment booking
 type Booking struct {
-	ID                string          `json:"id"` // Order ID
-	RouteID           string          `json:"route_id"`
-	Passenger         Passenger       `json:"passenger"`
-	Segments          []BookedSegment `json:"segments"`
-	TotalPrice        float64         `json:"total_price"`        // Sum of all segment prices
-	TotalCommission   float64         `json:"total_commission"`   // Sum of all commissions
-	GrandTotal        float64         `json:"grand_total"`        // totalPrice + totalCommission
-	InsurancePremium  float64         `json:"insurance_premium,omitempty"`
-	IncludeInsurance  bool            `json:"include_insurance"`
-	Status            BookingStatus   `json:"status"`
-	Payment           *Payment        `json:"payment,omitempty"`
-	CreatedAt         time.Time       `json:"created_at"`
-	UpdatedAt         time.Time       `json:"updated_at"`
-	ConfirmedAt       *time.Time      `json:"confirmed_at,omitempty"`
-	CancelledAt       *time.Time      `json:"cancelled_at,omitempty"`
-	CancellationReason string         `json:"cancellation_reason,omitempty"`
+	ID                 string          `json:"id"` // Order ID
+	UserID             string          `json:"user_id,omitempty"`
+	RouteID            string          `json:"route_id"`
+	Passenger          Passenger       `json:"passenger"`
+	Segments           []BookedSegment `json:"segments"`
+	TotalPrice         float64         `json:"total_price"`        // Sum of all segment prices
+	TotalCommission    float64         `json:"total_commission"`   // Sum of all commissions
+	GrandTotal         float64         `json:"grand_total"`        // totalPrice + totalCommission
+	InsurancePremium   float64         `json:"insurance_premium,omitempty"`
+	IncludeInsurance   bool            `json:"include_insurance"`
+	Status             BookingStatus   `json:"status"`
+	Payment            *Payment        `json:"payment,omitempty"`
+	CreatedAt          time.Time       `json:"created_at"`
+	UpdatedAt          time.Time       `json:"updated_at"`
+	ConfirmedAt        *time.Time      `json:"confirmed_at,omitempty"`
+	CancelledAt        *time.Time      `json:"cancelled_at,omitempty"`
+	CancellationReason string          `json:"cancellation_reason,omitempty"`
 }
 
 // AddSegment adds a booked segment to the booking
@@ -109,18 +108,17 @@ func (b *Booking) AddSegment(segment BookedSegment) {
 	}
 }
 
-// MarkAsConfirmed marks booking as confirmed
-func (b *Booking) MarkAsConfirmed() {
-	b.Status = BookingConfirmed
+// MarkAsInProgress marks booking as in progress (confirmed and active)
+func (b *Booking) MarkAsInProgress() {
+	b.Status = BookingInProgress
 	now := time.Now()
 	b.ConfirmedAt = &now
 	b.UpdatedAt = now
 }
 
-// MarkAsFailed marks booking as failed
-func (b *Booking) MarkAsFailed(reason string) {
-	b.Status = BookingFailed
-	b.CancellationReason = reason
+// MarkAsCompleted marks booking as completed
+func (b *Booking) MarkAsCompleted() {
+	b.Status = BookingCompleted
 	b.UpdatedAt = time.Now()
 }
 
@@ -136,7 +134,7 @@ func (b *Booking) MarkAsCancelled(reason string) {
 // AllSegmentsBooked checks if all segments are successfully booked
 func (b *Booking) AllSegmentsBooked() bool {
 	for _, segment := range b.Segments {
-		if segment.BookingStatus != BookingConfirmed {
+		if segment.BookingStatus != BookingInProgress {
 			return false
 		}
 	}

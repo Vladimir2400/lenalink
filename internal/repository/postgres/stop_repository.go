@@ -77,7 +77,7 @@ func (r *StopRepository) Upsert(ctx context.Context, stop *domain.Stop) error {
 // FindByID retrieves a stop by ID
 func (r *StopRepository) FindByID(ctx context.Context, id string) (*domain.Stop, error) {
 	const query = `
-		SELECT id, name, city, latitude, longitude
+		SELECT id, name, city, city_display_name, latitude, longitude
 		FROM stops
 		WHERE id = $1
 	`
@@ -88,6 +88,7 @@ func (r *StopRepository) FindByID(ctx context.Context, id string) (*domain.Stop,
 		&stop.ID,
 		&stop.Name,
 		&stop.City,
+		&stop.CityDisplayName,
 		&stop.Latitude,
 		&stop.Longitude,
 	)
@@ -105,7 +106,7 @@ func (r *StopRepository) FindByID(ctx context.Context, id string) (*domain.Stop,
 // FindByCity retrieves all stops in a city
 func (r *StopRepository) FindByCity(ctx context.Context, city string) ([]domain.Stop, error) {
 	const query = `
-		SELECT id, name, city, latitude, longitude
+		SELECT id, name, city, city_display_name, latitude, longitude
 		FROM stops
 		WHERE city = $1
 		ORDER BY name
@@ -124,6 +125,7 @@ func (r *StopRepository) FindByCity(ctx context.Context, city string) ([]domain.
 			&stop.ID,
 			&stop.Name,
 			&stop.City,
+			&stop.CityDisplayName,
 			&stop.Latitude,
 			&stop.Longitude,
 		); err != nil {
@@ -139,7 +141,7 @@ func (r *StopRepository) FindByCity(ctx context.Context, city string) ([]domain.
 func (r *StopRepository) FindByCoordinates(ctx context.Context, lat, lon float64, radiusKm int) ([]domain.Stop, error) {
 	// Using Haversine formula for distance calculation
 	const query = `
-		SELECT id, name, city, latitude, longitude,
+		SELECT id, name, city, city_display_name, latitude, longitude,
 		       6371 * acos(
 		           cos(radians($1)) * cos(radians(latitude)) *
 		           cos(radians(longitude) - radians($2)) +
@@ -168,6 +170,7 @@ func (r *StopRepository) FindByCoordinates(ctx context.Context, lat, lon float64
 			&stop.ID,
 			&stop.Name,
 			&stop.City,
+			&stop.CityDisplayName,
 			&stop.Latitude,
 			&stop.Longitude,
 			&distance,
@@ -180,10 +183,46 @@ func (r *StopRepository) FindByCoordinates(ctx context.Context, lat, lon float64
 	return stops, rows.Err()
 }
 
+// FindCitiesByName searches for distinct cities by partial name match
+func (r *StopRepository) FindCitiesByName(ctx context.Context, namePrefix string) ([]domain.Stop, error) {
+	const query = `
+		SELECT DISTINCT ON (city_display_name)
+			id, name, city, city_display_name, latitude, longitude
+		FROM stops
+		WHERE LOWER(city_display_name) LIKE LOWER($1)
+		ORDER BY city_display_name, name
+		LIMIT 20
+	`
+
+	rows, err := r.db.db.QueryContext(ctx, query, namePrefix+"%")
+	if err != nil {
+		return nil, fmt.Errorf("error querying cities by name: %w", err)
+	}
+	defer rows.Close()
+
+	var stops []domain.Stop
+	for rows.Next() {
+		var stop domain.Stop
+		if err := rows.Scan(
+			&stop.ID,
+			&stop.Name,
+			&stop.City,
+			&stop.CityDisplayName,
+			&stop.Latitude,
+			&stop.Longitude,
+		); err != nil {
+			return nil, fmt.Errorf("error scanning stop: %w", err)
+		}
+		stops = append(stops, stop)
+	}
+
+	return stops, rows.Err()
+}
+
 // FindAll retrieves all stops
 func (r *StopRepository) FindAll(ctx context.Context) ([]domain.Stop, error) {
 	const query = `
-		SELECT id, name, city, latitude, longitude
+		SELECT id, name, city, city_display_name, latitude, longitude
 		FROM stops
 		ORDER BY city, name
 	`
@@ -201,6 +240,7 @@ func (r *StopRepository) FindAll(ctx context.Context) ([]domain.Stop, error) {
 			&stop.ID,
 			&stop.Name,
 			&stop.City,
+			&stop.CityDisplayName,
 			&stop.Latitude,
 			&stop.Longitude,
 		); err != nil {

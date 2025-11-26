@@ -16,13 +16,14 @@ const (
 
 // Stop represents a location on a route
 type Stop struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	City        string     `json:"city"`
-	Latitude    float64    `json:"latitude"`
-	Longitude   float64    `json:"longitude"`
-	ArrivalAt   *time.Time `json:"arrival_at,omitempty"`
-	DepartureAt *time.Time `json:"departure_at,omitempty"`
+	ID              string     `json:"id"`
+	Name            string     `json:"name"`
+	City            string     `json:"city"`
+	CityDisplayName string     `json:"city_display_name"`
+	Latitude        float64    `json:"latitude"`
+	Longitude       float64    `json:"longitude"`
+	ArrivalAt       *time.Time `json:"arrival_at,omitempty"`
+	DepartureAt     *time.Time `json:"departure_at,omitempty"`
 }
 
 // Segment represents a single transport leg

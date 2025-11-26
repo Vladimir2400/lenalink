@@ -13,14 +13,18 @@ import (
 type Router struct {
 	*mux.Router
 	healthHandler  *HealthHandler
+	authHandler    *AuthHandler
 	routeHandler   *RouteHandler
+	cityHandler    *CityHandler
 	bookingHandler *BookingHandler
 	webhookHandler *WebhookHandler
 }
 
 // NewRouter creates and configures the HTTP router
 func NewRouter(
+	authService *service.AuthService,
 	routeService *service.RouteService,
+	cityService *service.CityService,
 	bookingService *service.BookingService,
 	paymentService *service.PaymentService,
 ) *Router {
@@ -28,7 +32,9 @@ func NewRouter(
 
 	// Create handlers
 	healthHandler := NewHealthHandler()
+	authHandler := NewAuthHandler(authService)
 	routeHandler := NewRouteHandler(routeService)
+	cityHandler := NewCityHandler(cityService)
 	bookingHandler := NewBookingHandler(bookingService)
 	webhookHandler := NewWebhookHandler(bookingService, paymentService)
 
@@ -38,25 +44,38 @@ func NewRouter(
 	r.Use(middleware.Logging)
 	r.Use(middleware.CORS)
 
+	// API routes (no version prefix for auth)
+	api := r.PathPrefix("/api").Subrouter()
+
+	// Authentication endpoints (no auth required)
+	api.HandleFunc("/register", authHandler.Register).Methods("POST")
+	api.HandleFunc("/login", authHandler.Login).Methods("POST")
+
+	// Protected endpoints (require authentication)
+	api.HandleFunc("/my_routes", middleware.AuthMiddleware(authService)(http.HandlerFunc(bookingHandler.GetMyRoutes)).ServeHTTP).Methods("GET")
+
 	// API v1 routes
-	api := r.PathPrefix("/api/v1").Subrouter()
+	v1 := api.PathPrefix("/v1").Subrouter()
 
-	// Health check endpoints
-	api.HandleFunc("/health", healthHandler.Health).Methods("GET")
-	api.HandleFunc("/ready", healthHandler.Ready).Methods("GET")
+	// Health check endpoints (no auth required)
+	v1.HandleFunc("/health", healthHandler.Health).Methods("GET")
+	v1.HandleFunc("/ready", healthHandler.Ready).Methods("GET")
 
-	// Route endpoints
-	api.HandleFunc("/routes/search", routeHandler.SearchRoutes).Methods("POST")
-	api.HandleFunc("/routes/{id}", routeHandler.GetRouteByID).Methods("GET")
+	// Route endpoints (no auth required for search/view)
+	v1.HandleFunc("/routes/search", routeHandler.SearchRoutes).Methods("POST")
+	v1.HandleFunc("/routes/{id}", routeHandler.GetRouteByID).Methods("GET")
 
-	// Booking endpoints
-	api.HandleFunc("/bookings", bookingHandler.CreateBooking).Methods("POST")
-	api.HandleFunc("/bookings", bookingHandler.ListBookings).Methods("GET")
-	api.HandleFunc("/bookings/{id}", bookingHandler.GetBooking).Methods("GET")
-	api.HandleFunc("/bookings/{id}/cancel", bookingHandler.CancelBooking).Methods("POST")
+	// City endpoints (no auth required)
+	v1.HandleFunc("/cities", cityHandler.SearchCities).Methods("GET")
+
+	// Booking endpoints (auth required)
+	v1.Handle("/bookings", middleware.AuthMiddleware(authService)(http.HandlerFunc(bookingHandler.CreateBooking))).Methods("POST")
+	v1.Handle("/bookings", middleware.AuthMiddleware(authService)(http.HandlerFunc(bookingHandler.ListBookings))).Methods("GET")
+	v1.Handle("/bookings/{id}", middleware.AuthMiddleware(authService)(http.HandlerFunc(bookingHandler.GetBooking))).Methods("GET")
+	v1.Handle("/bookings/{id}/cancel", middleware.AuthMiddleware(authService)(http.HandlerFunc(bookingHandler.CancelBooking))).Methods("POST")
 
 	// Webhook endpoints (no auth required for payment provider callbacks)
-	api.HandleFunc("/webhooks/yookassa", webhookHandler.HandleYooKassaWebhook).Methods("POST")
+	v1.HandleFunc("/webhooks/yookassa", webhookHandler.HandleYooKassaWebhook).Methods("POST")
 
 	// 404 handler
 	r.NotFoundHandler = r.NewRoute().HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +86,9 @@ func NewRouter(
 	return &Router{
 		Router:         r,
 		healthHandler:  healthHandler,
+		authHandler:    authHandler,
 		routeHandler:   routeHandler,
+		cityHandler:    cityHandler,
 		bookingHandler: bookingHandler,
 		webhookHandler: webhookHandler,
 	}
