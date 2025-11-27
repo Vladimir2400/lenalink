@@ -134,6 +134,12 @@ db-reset-with-data: db-reset
 	@docker-compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) < scripts/seed_yakutia_routes.sql
 	@echo "✓ Test data loaded successfully"
 
+# Load data for November 27, 2025
+db-seed-nov27:
+	@echo "📥 Loading November 27 data..."
+	@docker-compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) < scripts/seed_nov27_2025.sql
+	@echo "✓ November 27 data loaded successfully"
+
 # Development commands
 dev-setup: docker-up
 	@sleep 3
