@@ -60,11 +60,6 @@ INSERT INTO stops (id, name, city, city_display_name, latitude, longitude, stop_
 ('aldan_railway', 'Aldan Railway Station', 'aldan', 'Алдан', 58.6000, 125.3833, 'station') ,
 ('aldan_bus', 'Aldan Bus Terminal', 'aldan', 'Алдан', 58.6000, 125.3833, 'station') 
 
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  city_display_name = EXCLUDED.city_display_name,
-  latitude = EXCLUDED.latitude,
-  longitude = EXCLUDED.longitude;
 
 -- ============================================================================
 -- 2. МОСКВА → ЯКУТСК (27 НОЯБРЯ 2025)
@@ -76,20 +71,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_msk_yks_morning_nov27', 'moscow', 'yakutsk',
  '2025-11-27 08:00:00+03', '2025-11-27 23:00:00+09', 28800000000000,
  32000.00, 92.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_msk_yks_morning_nov27', 'route_msk_yks_morning_nov27', 'air', 'S7 Airlines', 'moscow_dme', 'yakutsk_yks',
  '2025-11-27 08:00:00+03', '2025-11-27 23:00:00+09', 32000.00, 28800000000000, 180, 92.0, 4884, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- Маршрут 2: Москва (SVO) → Якутск (вечерний)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
@@ -97,20 +84,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_msk_yks_evening_nov27', 'moscow', 'yakutsk',
  '2025-11-27 18:00:00+03', '2025-11-28 09:00:00+09', 28800000000000,
  28000.00, 90.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_msk_yks_evening_nov27', 'route_msk_yks_evening_nov27', 'air', 'Yakutia Airlines', 'moscow_svo', 'yakutsk_yks',
  '2025-11-27 18:00:00+03', '2025-11-28 09:00:00+09', 28000.00, 28800000000000, 200, 90.0, 4884, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- ============================================================================
 -- 3. ЯКУТСК → МОСКВА (27-28 НОЯБРЯ 2025)
@@ -122,20 +101,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_yks_msk_morning_nov27', 'yakutsk', 'moscow',
  '2025-11-27 06:00:00+09', '2025-11-27 14:00:00+03', 28800000000000,
  34000.00, 91.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_yks_msk_morning_nov27', 'route_yks_msk_morning_nov27', 'air', 'S7 Airlines', 'yakutsk_yks', 'moscow_dme',
  '2025-11-27 06:00:00+09', '2025-11-27 14:00:00+03', 34000.00, 28800000000000, 180, 91.0, 4884, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- ============================================================================
 -- 4. ВНУТРИ ЯКУТИИ - АВИА (27 НОЯБРЯ 2025)
@@ -147,20 +118,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_yks_mirny_morning_nov27', 'yakutsk', 'mirny',
  '2025-11-27 09:00:00+09', '2025-11-27 10:30:00+09', 5400000000000,
  12000.00, 88.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_yks_mirny_morning_nov27', 'route_yks_mirny_morning_nov27', 'air', 'ALROSA Air', 'yakutsk_yks', 'mirny_aprt',
  '2025-11-27 09:00:00+09', '2025-11-27 10:30:00+09', 12000.00, 5400000000000, 100, 88.0, 520, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- Якутск → Мирный (вечер)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
@@ -168,20 +131,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_yks_mirny_evening_nov27', 'yakutsk', 'mirny',
  '2025-11-27 17:00:00+09', '2025-11-27 18:30:00+09', 5400000000000,
  13500.00, 90.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_yks_mirny_evening_nov27', 'route_yks_mirny_evening_nov27', 'air', 'ALROSA Air', 'yakutsk_yks', 'mirny_aprt',
  '2025-11-27 17:00:00+09', '2025-11-27 18:30:00+09', 13500.00, 5400000000000, 100, 90.0, 520, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- Якутск → Нерюнгри
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
@@ -189,20 +144,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_yks_ner_nov27', 'yakutsk', 'neryungri',
  '2025-11-27 10:00:00+09', '2025-11-27 11:30:00+09', 5400000000000,
  14000.00, 87.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_yks_ner_nov27', 'route_yks_ner_nov27', 'air', 'Yakutia Airlines', 'yakutsk_yks', 'nerungri_aprt',
  '2025-11-27 10:00:00+09', '2025-11-27 11:30:00+09', 14000.00, 5400000000000, 120, 87.0, 560, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- Якутск → Удачный
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
@@ -210,20 +157,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_yks_udachny_nov27', 'yakutsk', 'udachny',
  '2025-11-27 11:30:00+09', '2025-11-27 13:45:00+09', 8100000000000,
  16000.00, 85.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_yks_udachny_nov27', 'route_yks_udachny_nov27', 'air', 'ALROSA Air', 'yakutsk_yks', 'udachny_aprt',
  '2025-11-27 11:30:00+09', '2025-11-27 13:45:00+09', 16000.00, 8100000000000, 80, 85.0, 630, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- Якутск → Вилюйск
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
@@ -231,20 +170,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_yks_vilyuysk_nov27', 'yakutsk', 'vilyuysk',
  '2025-11-27 14:00:00+09', '2025-11-27 15:40:00+09', 6000000000000,
  11000.00, 82.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_yks_vilyuysk_nov27', 'route_yks_vilyuysk_nov27', 'air', 'Polar Airlines', 'yakutsk_yks', 'vilyuysk_aprt',
  '2025-11-27 14:00:00+09', '2025-11-27 15:40:00+09', 11000.00, 6000000000000, 70, 82.0, 460, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- Якутск → Тикси (Северный Ледовитый океан)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
@@ -252,20 +183,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_yks_tiksi_nov27', 'yakutsk', 'tiksi',
  '2025-11-27 08:30:00+09', '2025-11-27 11:00:00+09', 9000000000000,
  22000.00, 78.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_yks_tiksi_nov27', 'route_yks_tiksi_nov27', 'air', 'Polar Airlines', 'yakutsk_yks', 'tiksi_aprt',
  '2025-11-27 08:30:00+09', '2025-11-27 11:00:00+09', 22000.00, 9000000000000, 60, 78.0, 1670, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- Якутск → Оймякон (Полюс холода)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
@@ -273,20 +196,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_yks_oymyakon_nov27', 'yakutsk', 'oymyakon',
  '2025-11-27 07:00:00+09', '2025-11-27 09:30:00+09', 9000000000000,
  19000.00, 75.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_yks_oymyakon_nov27', 'route_yks_oymyakon_nov27', 'air', 'Polar Airlines', 'yakutsk_yks', 'oymyakon_aprt',
  '2025-11-27 07:00:00+09', '2025-11-27 09:30:00+09', 19000.00, 9000000000000, 50, 75.0, 930, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- ============================================================================
 -- 5. АВТОБУСНЫЕ МАРШРУТЫ (27 НОЯБРЯ 2025)
@@ -298,20 +213,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_yks_pokrovsk_bus_nov27', 'yakutsk', 'pokrovsk',
  '2025-11-27 08:00:00+09', '2025-11-27 10:30:00+09', 9000000000000,
  1200.00, 86.00, ARRAY['bus']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_yks_pokrovsk_bus_nov27', 'route_yks_pokrovsk_bus_nov27', 'bus', 'Avtotrans Yakutia', 'yakutsk_bus', 'pokrovsk_bus',
  '2025-11-27 08:00:00+09', '2025-11-27 10:30:00+09', 1200.00, 9000000000000, 45, 86.0, 80, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- Якутск → Нерюнгри (автобус, дешевле авиа)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
@@ -319,20 +226,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_yks_ner_bus_nov27', 'yakutsk', 'neryungri',
  '2025-11-27 09:00:00+09', '2025-11-27 19:00:00+09', 36000000000000,
  3500.00, 75.00, ARRAY['bus']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_yks_ner_bus_nov27', 'route_yks_ner_bus_nov27', 'bus', 'Amur Transport', 'yakutsk_bus', 'nerungri_bus',
  '2025-11-27 09:00:00+09', '2025-11-27 19:00:00+09', 3500.00, 36000000000000, 50, 75.0, 350, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- ============================================================================
 -- 6. КОМБИНИРОВАННЫЕ МАРШРУТЫ (27-28 НОЯБРЯ 2025)
@@ -345,10 +244,6 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_msk_olek_combo_nov27', 'moscow', 'olekminsk',
  '2025-11-27 08:00:00+03', '2025-11-28 08:00:00+09', 64800000000000,
  35000.00, 85.00, ARRAY['air','bus']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
@@ -357,17 +252,11 @@ INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end
  '2025-11-27 08:00:00+03', '2025-11-27 23:00:00+09', 32000.00, 28800000000000, 180, 92.0, 4884, 1),
 ('seg_msk_olek_2_nov27', 'route_msk_olek_combo_nov27', 'bus', 'Avtotrans Yakutia', 'yakutsk_bus', 'olekminsk_port',
  '2025-11-28 01:00:00+09', '2025-11-28 08:00:00+09', 3000.00, 25200000000000, 40, 78.0, 610, 2)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 INSERT INTO connections (route_id, from_segment_id, to_segment_id,
                         transfer_duration, transfer_distance, requires_transport, is_valid, gap, sequence_order) VALUES
 ('route_msk_olek_combo_nov27', 'seg_msk_olek_1_nov27', 'seg_msk_olek_2_nov27',
  7200000000000, 12000, true, true, 7200000000000, 1)
-ON CONFLICT (route_id, from_segment_id, to_segment_id) DO UPDATE SET
-  transfer_duration = EXCLUDED.transfer_duration;
 
 -- Москва → Мирный (через Якутск с пересадкой)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
@@ -375,10 +264,6 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_msk_mirny_via_yks_nov27', 'moscow', 'mirny',
  '2025-11-27 08:00:00+03', '2025-11-28 01:30:00+09', 42300000000000,
  42000.00, 88.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
@@ -387,17 +272,11 @@ INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end
  '2025-11-27 08:00:00+03', '2025-11-27 23:00:00+09', 32000.00, 28800000000000, 180, 92.0, 4884, 1),
 ('seg_msk_mirny_2_nov27', 'route_msk_mirny_via_yks_nov27', 'air', 'ALROSA Air', 'yakutsk_yks', 'mirny_aprt',
  '2025-11-28 00:00:00+09', '2025-11-28 01:30:00+09', 10000.00, 5400000000000, 100, 84.0, 520, 2)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 INSERT INTO connections (route_id, from_segment_id, to_segment_id,
                         transfer_duration, transfer_distance, requires_transport, is_valid, gap, sequence_order) VALUES
 ('route_msk_mirny_via_yks_nov27', 'seg_msk_mirny_1_nov27', 'seg_msk_mirny_2_nov27',
  3600000000000, 12000, true, true, 3600000000000, 1)
-ON CONFLICT (route_id, from_segment_id, to_segment_id) DO UPDATE SET
-  transfer_duration = EXCLUDED.transfer_duration;
 
 -- ============================================================================
 -- 7. ОБРАТНЫЕ МАРШРУТЫ ВНУТРИ ЯКУТИИ (27 НОЯБРЯ 2025)
@@ -409,20 +288,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_mirny_yks_nov27', 'mirny', 'yakutsk',
  '2025-11-27 12:00:00+09', '2025-11-27 13:30:00+09', 5400000000000,
  12500.00, 89.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_mirny_yks_nov27', 'route_mirny_yks_nov27', 'air', 'ALROSA Air', 'mirny_aprt', 'yakutsk_yks',
  '2025-11-27 12:00:00+09', '2025-11-27 13:30:00+09', 12500.00, 5400000000000, 100, 89.0, 520, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 -- Нерюнгри → Якутск
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
@@ -430,20 +301,12 @@ INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_
 ('route_ner_yks_nov27', 'neryungri', 'yakutsk',
  '2025-11-27 14:00:00+09', '2025-11-27 15:30:00+09', 5400000000000,
  14500.00, 86.00, ARRAY['air']::text[], NOW())
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  total_price = EXCLUDED.total_price;
 
 INSERT INTO segments (id, route_id, transport_type, provider, start_stop_id, end_stop_id,
                      departure_time, arrival_time, price, duration, seat_count,
                      reliability_rate, distance, sequence_order) VALUES
 ('seg_ner_yks_nov27', 'route_ner_yks_nov27', 'air', 'Yakutia Airlines', 'nerungri_aprt', 'yakutsk_yks',
  '2025-11-27 14:00:00+09', '2025-11-27 15:30:00+09', 14500.00, 5400000000000, 120, 86.0, 560, 1)
-ON CONFLICT (id) DO UPDATE SET
-  departure_time = EXCLUDED.departure_time,
-  arrival_time = EXCLUDED.arrival_time,
-  price = EXCLUDED.price;
 
 COMMIT;
 

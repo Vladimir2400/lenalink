@@ -137,8 +137,16 @@ db-reset-with-data: db-reset
 # Load data for November 27, 2025
 db-seed-nov27:
 	@echo "📥 Loading November 27 data..."
-	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) < scripts/seed_nov27_2025.sql
+	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) < scripts/seed_2025_11_27.sql
 	@echo "✓ November 27 data loaded successfully"
+
+# Drop all data from database
+db-drop-data:
+	@echo "⚠️  WARNING: This will delete ALL data from the database!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read confirm
+	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) < scripts/drop_all_data.sql
+	@echo "✓ All data dropped successfully"
 
 # Development commands
 dev-setup: docker-up
