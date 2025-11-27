@@ -46,7 +46,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate token
-	token, err := h.authService.Login(r.Context(), req.Email, req.Password)
+	token, _, err := h.authService.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		h.errorHandler.RespondWithError(w, http.StatusInternalServerError, "TOKEN_GENERATION_FAILED", "Failed to generate token")
 		return

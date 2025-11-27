@@ -19,6 +19,24 @@ func NewValidator() *Validator {
 	return &Validator{}
 }
 
+// ValidateStruct validates any struct based on its type
+func (v *Validator) ValidateStruct(req interface{}) error {
+	switch r := req.(type) {
+	case *dto.SearchRouteRequest:
+		return v.ValidateSearchRouteRequest(r)
+	case *dto.CreateBookingRequest:
+		return v.ValidateCreateBookingRequest(r)
+	case *dto.CancelBookingRequest:
+		return v.ValidateCancelBookingRequest(r)
+	case *dto.RegisterRequest:
+		return v.ValidateRegisterRequest(r)
+	case *dto.LoginRequest:
+		return v.ValidateLoginRequest(r)
+	default:
+		return nil
+	}
+}
+
 // ValidateSearchRouteRequest validates search route request
 func (v *Validator) ValidateSearchRouteRequest(req *dto.SearchRouteRequest) error {
 	if strings.TrimSpace(req.From) == "" {
@@ -157,6 +175,50 @@ func (v *Validator) ValidateCancelBookingRequest(req *dto.CancelBookingRequest) 
 
 	if len(req.Reason) > 500 {
 		return errors.New("'reason' cannot exceed 500 characters")
+	}
+
+	return nil
+}
+
+// ValidateRegisterRequest validates register request
+func (v *Validator) ValidateRegisterRequest(req *dto.RegisterRequest) error {
+	if strings.TrimSpace(req.Name) == "" {
+		return errors.New("'name' field is required")
+	}
+
+	if strings.TrimSpace(req.Email) == "" {
+		return errors.New("'email' field is required")
+	}
+
+	_, err := mail.ParseAddress(req.Email)
+	if err != nil {
+		return errors.New("'email' must be a valid email address")
+	}
+
+	if strings.TrimSpace(req.Password) == "" {
+		return errors.New("'password' field is required")
+	}
+
+	if len(req.Password) < 8 {
+		return errors.New("'password' must be at least 8 characters")
+	}
+
+	return nil
+}
+
+// ValidateLoginRequest validates login request
+func (v *Validator) ValidateLoginRequest(req *dto.LoginRequest) error {
+	if strings.TrimSpace(req.Email) == "" {
+		return errors.New("'email' field is required")
+	}
+
+	_, err := mail.ParseAddress(req.Email)
+	if err != nil {
+		return errors.New("'email' must be a valid email address")
+	}
+
+	if strings.TrimSpace(req.Password) == "" {
+		return errors.New("'password' field is required")
 	}
 
 	return nil

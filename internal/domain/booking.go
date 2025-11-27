@@ -6,10 +6,13 @@ import "time"
 type BookingStatus string
 
 const (
-	BookingPending    BookingStatus = "pending"     // Awaiting payment
-	BookingInProgress BookingStatus = "in_progress" // Confirmed and active (journey ongoing or upcoming)
-	BookingCompleted  BookingStatus = "completed"   // Journey finished
-	BookingCancelled  BookingStatus = "cancelled"   // User cancelled or failed
+	BookingPending        BookingStatus = "pending"         // Awaiting payment
+	BookingPendingPayment BookingStatus = "pending_payment" // Segments booked, awaiting payment confirmation
+	BookingInProgress     BookingStatus = "in_progress"     // Confirmed and active (journey ongoing or upcoming)
+	BookingCompleted      BookingStatus = "completed"       // Journey finished
+	BookingCancelled      BookingStatus = "cancelled"       // User cancelled or failed
+	BookingFailed         BookingStatus = "failed"          // Booking failed
+	BookingRefunded       BookingStatus = "refunded"        // Payment refunded
 )
 
 // PaymentStatus represents the status of a payment
@@ -116,6 +119,11 @@ func (b *Booking) MarkAsInProgress() {
 	b.UpdatedAt = now
 }
 
+// MarkAsConfirmed marks booking as confirmed (alias for MarkAsInProgress)
+func (b *Booking) MarkAsConfirmed() {
+	b.MarkAsInProgress()
+}
+
 // MarkAsCompleted marks booking as completed
 func (b *Booking) MarkAsCompleted() {
 	b.Status = BookingCompleted
@@ -125,6 +133,15 @@ func (b *Booking) MarkAsCompleted() {
 // MarkAsCancelled marks booking as cancelled
 func (b *Booking) MarkAsCancelled(reason string) {
 	b.Status = BookingCancelled
+	now := time.Now()
+	b.CancelledAt = &now
+	b.CancellationReason = reason
+	b.UpdatedAt = now
+}
+
+// MarkAsFailed marks booking as failed
+func (b *Booking) MarkAsFailed(reason string) {
+	b.Status = BookingFailed
 	now := time.Now()
 	b.CancelledAt = &now
 	b.CancellationReason = reason
