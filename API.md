@@ -2,7 +2,7 @@
 
 **Base URL:** `http://localhost:8080/api/v1`
 
-**Version:** 0.4.0
+**Version:** 0.5.0
 
 **Content-Type:** `application/json`
 
@@ -10,50 +10,220 @@
 
 ## Overview
 
-LenaLink is a multi-modal transport aggregator that allows users to search for routes and book entire multi-segment journeys (air, rail, bus, river) in a single transaction.
+LenaLink - мультимодальный агрегатор транспорта для Якутии (MVP для HACK the ICE 2025). Позволяет искать и бронировать комбинированные маршруты (самолет, поезд, автобус, речной транспорт) с гарантией ACID транзакций.
 
-**Key Features:**
-- Graph-based route finding with Dijkstra pathfinding
-- Multi-segment booking with ACID rollback
-- Commission-based pricing (5-15% markup)
-- Optional travel insurance
-- Mock payment gateway (MVP)
+**Основные возможности:**
+- Граф-алгоритм поиска маршрутов (Dijkstra)
+- Мультисегментное бронирование с ACID откатом
+- Комиссионное ценообразование (5-15% наценка)
+- Опциональное страхование
+- Аутентификация пользователей (JWT)
+- Mock платежный шлюз / YooKassa
 
 ---
 
-## Authentication
+## Аутентификация
 
-🚧 **Not implemented yet** (MVP uses open endpoints)
+API использует JWT (JSON Web Token) для аутентификации.
 
-For production, all endpoints except `/health` will require Bearer token authentication.
+### Защищенные эндпоинты
+Требуют заголовок `Authorization: Bearer <token>`:
+- `POST /api/v1/bookings` - Создание бронирования
+- `GET /api/v1/bookings` - Список всех бронирований
+- `GET /api/v1/bookings/{id}` - Детали бронирования
+- `POST /api/v1/bookings/{id}/cancel` - Отмена бронирования
+- `GET /api/my_routes` - Мои маршруты (бронирования пользователя)
+
+### Открытые эндпоинты
+Не требуют аутентификации:
+- `POST /api/register` - Регистрация
+- `POST /api/login` - Вход
+- `GET /api/v1/health` - Проверка здоровья
+- `POST /api/v1/routes/search` - Поиск маршрутов
+- `GET /api/v1/routes/{id}` - Детали маршрута
+- `GET /api/v1/cities` - Поиск городов
 
 ---
 
 ## Endpoints
 
-### 1. Health Check
+### 1. Регистрация пользователя
 
-**GET** `/health`
+**POST** `/api/register`
 
-Check if the API server is running.
+Регистрация нового пользователя в системе.
+
+#### Request Body
+
+```json
+{
+  "name": "Иван Петров",
+  "email": "ivan.petrov@example.com",
+  "password": "SecurePassword123"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Полное имя пользователя |
+| `email` | string | Yes | Email адрес (используется для входа) |
+| `password` | string | Yes | Пароль (минимум 8 символов) |
+
+#### Response
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "usr_abc123",
+    "name": "Иван Петров",
+    "email": "ivan.petrov@example.com",
+    "created_at": "2025-06-15T10:30:00Z",
+    "last_login_at": null
+  }
+}
+```
+
+#### Status Codes
+
+- `201 Created` - Пользователь успешно зарегистрирован
+- `400 Bad Request` - Невалидные данные или email уже используется
+- `500 Internal Server Error` - Ошибка сервера
+
+---
+
+### 2. Вход в систему
+
+**POST** `/api/login`
+
+Аутентификация существующего пользователя.
+
+#### Request Body
+
+```json
+{
+  "email": "ivan.petrov@example.com",
+  "password": "SecurePassword123"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | Yes | Email адрес |
+| `password` | string | Yes | Пароль |
+
+#### Response
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "usr_abc123",
+    "name": "Иван Петров",
+    "email": "ivan.petrov@example.com",
+    "created_at": "2025-06-15T10:30:00Z",
+    "last_login_at": "2025-06-16T14:20:00Z"
+  }
+}
+```
+
+#### Status Codes
+
+- `200 OK` - Вход выполнен успешно
+- `401 Unauthorized` - Неверный email или пароль
+- `400 Bad Request` - Невалидные данные
+- `500 Internal Server Error` - Ошибка сервера
+
+---
+
+### 3. Health Check
+
+**GET** `/api/v1/health`
+
+Проверка работоспособности API сервера.
 
 #### Response
 
 ```json
 {
   "status": "healthy",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "timestamp": "2025-06-15T10:30:00Z"
 }
 ```
 
 ---
 
-### 2. Search Routes
+### 4. Readiness Check
+
+**GET** `/api/v1/ready`
+
+Проверка готовности сервера к обработке запросов (включая БД).
+
+#### Response
+
+```json
+{
+  "status": "ready",
+  "database": "connected",
+  "timestamp": "2025-06-15T10:30:00Z"
+}
+```
+
+---
+
+### 5. Поиск городов (автокомплит)
+
+**GET** `/api/v1/cities?name={prefix}`
+
+Поиск городов по префиксу названия (для автокомплита в UI).
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Префикс названия города (минимум 2 символа) |
+
+#### Examples
+
+```bash
+GET /api/v1/cities?name=як
+GET /api/v1/cities?name=мос
+GET /api/v1/cities?name=оле
+```
+
+#### Response
+
+```json
+{
+  "cities": [
+    {
+      "name": "Якутск",
+      "latitude": 62.0272,
+      "longitude": 129.7322
+    },
+    {
+      "name": "Якутск (аэропорт)",
+      "latitude": 62.0932,
+      "longitude": 129.7708
+    }
+  ]
+}
+```
+
+#### Status Codes
+
+- `200 OK` - Города найдены (может быть пустой массив)
+- `400 Bad Request` - Невалидный параметр запроса
+- `500 Internal Server Error` - Ошибка сервера
+
+---
+
+### 6. Поиск маршрутов
 
 **POST** `/api/v1/routes/search`
 
-Search for available routes between two cities using graph-based pathfinding.
+Поиск доступных маршрутов между двумя городами с использованием граф-алгоритма.
 
 #### Request Body
 
@@ -68,10 +238,10 @@ Search for available routes between two cities using graph-based pathfinding.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `from` | string | Yes | Departure city (e.g., "moscow", "yakutsk") |
-| `to` | string | Yes | Destination city |
-| `departure_date` | string | Yes | Departure date in ISO 8601 format (YYYY-MM-DD) |
-| `passengers` | integer | No | Number of passengers (default: 1) |
+| `from` | string | Yes | Город отправления (например, "moscow", "yakutsk") |
+| `to` | string | Yes | Город назначения |
+| `departure_date` | string | Yes | Дата отправления в формате ISO 8601 (YYYY-MM-DD) |
+| `passengers` | integer | No | Количество пассажиров (по умолчанию: 1, максимум: 10) |
 
 #### Response
 
@@ -173,30 +343,30 @@ Search for available routes between two cities using graph-based pathfinding.
 
 #### Route Types
 
-- `optimal` - Best balance of price, time, and reliability
-- `fastest` - Shortest total duration
-- `cheapest` - Lowest total price
+- `optimal` - Оптимальный баланс цены, времени и надежности
+- `fastest` - Самый быстрый маршрут
+- `cheapest` - Самый дешевый маршрут
 
 #### Status Codes
 
-- `200 OK` - Routes found successfully
-- `400 Bad Request` - Invalid search criteria
-- `404 Not Found` - No routes available
-- `500 Internal Server Error` - Server error
+- `200 OK` - Маршруты найдены успешно
+- `400 Bad Request` - Невалидные критерии поиска
+- `404 Not Found` - Маршруты не найдены
+- `500 Internal Server Error` - Ошибка сервера
 
 ---
 
-### 3. Get Route Details
+### 7. Детали маршрута
 
 **GET** `/api/v1/routes/{route_id}`
 
-Get detailed information about a specific route.
+Получение детальной информации о конкретном маршруте.
 
 #### Path Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `route_id` | string | Route ID from search results |
+| `route_id` | string | ID маршрута из результатов поиска |
 
 #### Response
 
@@ -243,17 +413,19 @@ Get detailed information about a specific route.
 
 #### Status Codes
 
-- `200 OK` - Route found
-- `404 Not Found` - Route not found
-- `500 Internal Server Error` - Server error
+- `200 OK` - Маршрут найден
+- `404 Not Found` - Маршрут не найден
+- `500 Internal Server Error` - Ошибка сервера
 
 ---
 
-### 4. Create Booking
+### 8. Создание бронирования
 
 **POST** `/api/v1/bookings`
 
-Book an entire multi-segment route in a single transaction. All segments are booked with providers, and payment is processed. If any segment fails, ALL bookings are rolled back (ACID guarantee).
+**⚠️ Требуется аутентификация:** `Authorization: Bearer <token>`
+
+Бронирование всего мультисегментного маршрута в одной транзакции. Все сегменты бронируются у провайдеров, обрабатывается платеж. Если любой сегмент не удается забронировать, ВСЕ бронирования откатываются (ACID гарантия).
 
 #### Request Body
 
@@ -276,24 +448,24 @@ Book an entire multi-segment route in a single transaction. All segments are boo
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `route_id` | string | Yes | Route ID from search |
-| `passenger.first_name` | string | Yes | Passenger first name |
-| `passenger.last_name` | string | Yes | Passenger last name |
-| `passenger.middle_name` | string | No | Passenger middle name (отчество) |
-| `passenger.date_of_birth` | string | Yes | Date of birth (YYYY-MM-DD) |
-| `passenger.passport_number` | string | Yes | Passport number |
-| `passenger.email` | string | Yes | Contact email |
-| `passenger.phone` | string | Yes | Contact phone |
-| `include_insurance` | boolean | No | Include travel insurance (default: false) |
-| `payment_method` | string | Yes | Payment method: `card`, `yookassa`, `cloudpay`, `sberpay` |
+| `route_id` | string | Yes | ID маршрута из поиска |
+| `passenger.first_name` | string | Yes | Имя пассажира |
+| `passenger.last_name` | string | Yes | Фамилия пассажира |
+| `passenger.middle_name` | string | No | Отчество пассажира |
+| `passenger.date_of_birth` | string | Yes | Дата рождения (YYYY-MM-DD, 18+) |
+| `passenger.passport_number` | string | Yes | Номер паспорта (формат: XXXX XXXXXX) |
+| `passenger.email` | string | Yes | Email для контакта |
+| `passenger.phone` | string | Yes | Телефон (формат: +7XXXXXXXXXX) |
+| `include_insurance` | boolean | No | Включить страховку (default: false) |
+| `payment_method` | string | Yes | Метод оплаты: `card`, `yookassa`, `cloudpay`, `sberpay` |
 
-#### Response
+#### Response (Success)
 
 ```json
 {
   "id": "booking_xyz789",
   "route_id": "route_abc123",
-  "status": "confirmed",
+  "status": "in_progress",
   "passenger": {
     "first_name": "Иван",
     "last_name": "Петров",
@@ -320,30 +492,8 @@ Book an entire multi-segment route in a single transaction. All segments are boo
       "price": 25000.0,
       "commission": 1750.0,
       "total_price": 26750.0,
-      "booking_status": "confirmed",
+      "booking_status": "in_progress",
       "provider_booking_ref": "BK-air-xyz78901"
-    },
-    {
-      "id": "booked_seg_002",
-      "segment_id": "seg_002",
-      "provider": "Lenskie Zori",
-      "transport_type": "river",
-      "from": {
-        "name": "Yakutsk River Port",
-        "city": "Yakutsk"
-      },
-      "to": {
-        "name": "Olyokminsk Port",
-        "city": "Olyokminsk"
-      },
-      "departure_time": "2025-06-21T06:00:00Z",
-      "arrival_time": "2025-06-21T14:00:00Z",
-      "ticket_number": "TKT-Len-def45678",
-      "price": 3500.0,
-      "commission": 350.0,
-      "total_price": 3850.0,
-      "booking_status": "confirmed",
-      "provider_booking_ref": "BK-river-abc12345"
     }
   ],
   "total_price": 28500.0,
@@ -367,17 +517,19 @@ Book an entire multi-segment route in a single transaction. All segments are boo
 }
 ```
 
-#### Booking Lifecycle
+#### Booking Status Lifecycle
 
-1. `pending` - Booking created, segments being booked
-2. `confirmed` - All segments booked, payment successful
-3. `failed` - Booking or payment failed, all rolled back
-4. `cancelled` - User cancelled booking
-5. `refunded` - Refund processed
+1. `pending` - Бронирование создано, сегменты бронируются
+2. `pending_payment` - Сегменты забронированы, ожидается подтверждение оплаты
+3. `in_progress` - Все сегменты забронированы, оплата успешна (подтверждено)
+4. `completed` - Путешествие завершено
+5. `failed` - Бронирование или оплата не удались, все откачено
+6. `cancelled` - Пользователь отменил бронирование
+7. `refunded` - Возврат средств обработан
 
-#### Error Scenarios with ACID Rollback
+#### Error Scenarios (ACID Rollback)
 
-**Scenario 1: Segment booking fails**
+**Сценарий 1: Ошибка бронирования сегмента**
 ```json
 {
   "error": {
@@ -388,7 +540,7 @@ Book an entire multi-segment route in a single transaction. All segments are boo
 }
 ```
 
-**Scenario 2: Payment fails**
+**Сценарий 2: Ошибка оплаты**
 ```json
 {
   "error": {
@@ -401,87 +553,56 @@ Book an entire multi-segment route in a single transaction. All segments are boo
 
 #### Status Codes
 
-- `201 Created` - Booking successful
-- `400 Bad Request` - Invalid booking data
-- `404 Not Found` - Route not found
-- `409 Conflict` - Booking failed (segment unavailable, payment failed)
-- `500 Internal Server Error` - Server error
+- `201 Created` - Бронирование успешно
+- `400 Bad Request` - Невалидные данные бронирования
+- `401 Unauthorized` - Отсутствует или невалиден токен
+- `404 Not Found` - Маршрут не найден
+- `409 Conflict` - Бронирование не удалось (сегмент недоступен, оплата не прошла)
+- `500 Internal Server Error` - Ошибка сервера
 
 ---
 
-### 5. Get Booking
+### 9. Получить бронирование
 
 **GET** `/api/v1/bookings/{booking_id}`
 
-Retrieve booking details.
+**⚠️ Требуется аутентификация:** `Authorization: Bearer <token>`
+
+Получение деталей конкретного бронирования.
 
 #### Path Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `booking_id` | string | Booking ID (Order ID) |
+| `booking_id` | string | ID бронирования (Order ID) |
 
 #### Response
 
-Same format as Create Booking response.
+Тот же формат, что и при создании бронирования.
 
 #### Status Codes
 
-- `200 OK` - Booking found
-- `404 Not Found` - Booking not found
-- `500 Internal Server Error` - Server error
+- `200 OK` - Бронирование найдено
+- `401 Unauthorized` - Отсутствует или невалиден токен
+- `404 Not Found` - Бронирование не найдено
+- `500 Internal Server Error` - Ошибка сервера
 
 ---
 
-### 6. Cancel Booking
-
-**POST** `/api/v1/bookings/{booking_id}/cancel`
-
-Cancel a confirmed booking and process refund.
-
-#### Request Body
-
-```json
-{
-  "reason": "User requested cancellation"
-}
-```
-
-#### Response
-
-```json
-{
-  "id": "booking_xyz789",
-  "status": "cancelled",
-  "cancelled_at": "2025-06-16T12:00:00Z",
-  "cancellation_reason": "User requested cancellation",
-  "payment": {
-    "status": "refunded"
-  }
-}
-```
-
-#### Status Codes
-
-- `200 OK` - Booking cancelled successfully
-- `400 Bad Request` - Cannot cancel booking (already cancelled, etc.)
-- `404 Not Found` - Booking not found
-- `500 Internal Server Error` - Server error
-
----
-
-### 7. List Bookings
+### 10. Список всех бронирований
 
 **GET** `/api/v1/bookings`
 
-Get all bookings (admin endpoint).
+**⚠️ Требуется аутентификация:** `Authorization: Bearer <token>`
+
+Получение всех бронирований (admin endpoint).
 
 #### Query Parameters
 
 | Parameter | Type | Description |
-|-----------|------|-------------|
-| `status` | string | Filter by status: `pending`, `confirmed`, `failed`, `cancelled`, `refunded` |
-| `email` | string | Filter by passenger email |
+|-----------|------|----------|
+| `status` | string | Фильтр по статусу: `pending`, `pending_payment`, `in_progress`, `completed`, `failed`, `cancelled`, `refunded` |
+| `email` | string | Фильтр по email пассажира |
 
 #### Response
 
@@ -491,7 +612,7 @@ Get all bookings (admin endpoint).
     {
       "id": "booking_xyz789",
       "route_id": "route_abc123",
-      "status": "confirmed",
+      "status": "in_progress",
       "passenger_email": "ivan.petrov@example.com",
       "grand_total": 32124.75,
       "created_at": "2025-06-15T10:30:00Z",
@@ -504,25 +625,125 @@ Get all bookings (admin endpoint).
 
 #### Status Codes
 
-- `200 OK` - Bookings retrieved
-- `500 Internal Server Error` - Server error
+- `200 OK` - Бронирования получены
+- `401 Unauthorized` - Отсутствует или невалиден токен
+- `500 Internal Server Error` - Ошибка сервера
 
 ---
 
-## Data Models
+### 11. Мои маршруты (бронирования пользователя)
 
-### TransportType
+**GET** `/api/my_routes`
+
+**⚠️ Требуется аутентификация:** `Authorization: Bearer <token>`
+
+Получение всех бронирований текущего пользователя.
+
+#### Response
+
+```json
+{
+  "bookings": [
+    {
+      "id": "booking_xyz789",
+      "route_id": "route_abc123",
+      "status": "in_progress",
+      "passenger": {
+        "first_name": "Иван",
+        "last_name": "Петров",
+        "email": "ivan.petrov@example.com"
+      },
+      "segments": [...],
+      "grand_total": 32124.75,
+      "created_at": "2025-06-15T10:30:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### Status Codes
+
+- `200 OK` - Бронирования получены
+- `401 Unauthorized` - Отсутствует или невалиден токен
+- `500 Internal Server Error` - Ошибка сервера
+
+---
+
+### 12. Отмена бронирования
+
+**POST** `/api/v1/bookings/{booking_id}/cancel`
+
+**⚠️ Требуется аутентификация:** `Authorization: Bearer <token>`
+
+Отмена подтвержденного бронирования и обработка возврата средств.
+
+#### Request Body
+
+```json
+{
+  "reason": "User requested cancellation due to changed plans"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `reason` | string | Yes | Причина отмены (10-500 символов) |
+
+#### Response
+
+```json
+{
+  "id": "booking_xyz789",
+  "status": "cancelled",
+  "cancelled_at": "2025-06-16T12:00:00Z",
+  "cancellation_reason": "User requested cancellation due to changed plans",
+  "payment": {
+    "status": "refunded"
+  }
+}
+```
+
+#### Status Codes
+
+- `200 OK` - Бронирование успешно отменено
+- `400 Bad Request` - Невозможно отменить бронирование (уже отменено и т.д.)
+- `401 Unauthorized` - Отсутствует или невалиден токен
+- `404 Not Found` - Бронирование не найдено
+- `500 Internal Server Error` - Ошибка сервера
+
+---
+
+### 13. Webhook YooKassa
+
+**POST** `/api/v1/webhooks/yookassa`
+
+Обработка webhook уведомлений от платежной системы YooKassa.
+
+**⚠️ Этот эндпоинт используется только платежным провайдером, не вызывается напрямую клиентом.**
+
+#### Events
+
+- `payment.succeeded` - Оплата успешно завершена
+- `payment.canceled` - Оплата отменена
+- `refund.succeeded` - Возврат средств завершен
+
+---
+
+## Модели данных
+
+### TransportType (Типы транспорта)
 
 ```
-air    - Airplane
-rail   - Train
-bus    - Bus
-river  - River boat/ferry
-taxi   - Taxi
-walk   - Walking transfer
+air    - Самолет
+rail   - Поезд
+bus    - Автобус
+river  - Речной транспорт (теплоход/паром)
+taxi   - Такси
+walk   - Пешая пересадка
 ```
 
-### Commission Rates by Transport Type
+### Комиссионные ставки по типам транспорта
 
 ```
 air:   7%
@@ -533,23 +754,23 @@ taxi:  15%
 walk:  0%
 ```
 
-### Insurance Calculation
+### Расчет страховки
 
 ```
-Base premium: 5% of route cost
+Базовый премиум: 5% от стоимости маршрута
 
-Surcharges:
-+ 1% per tight connection (< 2 hours between segments)
-+ 0.5% for night flights (departure 22:00-06:00)
-+ 2% if route includes river transport
-+ 1% if route has 3+ segments
+Надбавки:
++ 1% за каждую тесную пересадку (< 2 часов между сегментами)
++ 0.5% за ночные рейсы (отправление 22:00-06:00)
++ 2% если маршрут включает речной транспорт
++ 1% если маршрут имеет 3+ сегмента
 ```
 
 ---
 
-## Error Response Format
+## Формат ошибок
 
-All errors return the following format:
+Все ошибки возвращаются в следующем формате:
 
 ```json
 {
@@ -561,43 +782,170 @@ All errors return the following format:
 }
 ```
 
-### Common Error Codes
+### Основные коды ошибок
 
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
-| `ROUTE_NOT_FOUND` | 404 | Route not found |
-| `BOOKING_NOT_FOUND` | 404 | Booking not found |
-| `INVALID_ROUTE` | 400 | Invalid route data |
-| `INVALID_BOOKING` | 400 | Invalid booking data |
-| `BOOKING_FAILED` | 409 | Booking failed (segment unavailable) |
-| `PAYMENT_FAILED` | 409 | Payment processing failed |
-| `VALIDATION_FAILED` | 400 | Request validation failed |
-| `DATABASE_ERROR` | 500 | Database error |
+| `ROUTE_NOT_FOUND` | 404 | Маршрут не найден |
+| `BOOKING_NOT_FOUND` | 404 | Бронирование не найдено |
+| `INVALID_ROUTE` | 400 | Невалидные данные маршрута |
+| `INVALID_BOOKING` | 400 | Невалидные данные бронирования |
+| `BOOKING_FAILED` | 409 | Ошибка бронирования (сегмент недоступен) |
+| `PAYMENT_FAILED` | 409 | Ошибка обработки платежа |
+| `VALIDATION_ERROR` | 400 | Ошибка валидации запроса |
+| `UNAUTHORIZED` | 401 | Неавторизованный доступ |
+| `REGISTRATION_FAILED` | 400 | Ошибка регистрации |
+| `LOGIN_FAILED` | 401 | Ошибка входа |
+| `DATABASE_ERROR` | 500 | Ошибка базы данных |
+| `MISSING_PARAMETER` | 400 | Отсутствует обязательный параметр |
+| `INVALID_PARAMETER` | 400 | Невалидный параметр |
+
+---
+
+## Use Cases (Примеры использования)
+
+### Use Case 1: Полный цикл бронирования
+
+```bash
+# 1. Регистрация пользователя
+curl -X POST http://localhost:8080/api/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Иван Петров",
+    "email": "ivan@example.com",
+    "password": "SecurePass123"
+  }'
+
+# Ответ: {"token": "eyJhbGc...", "user": {...}}
+
+# 2. Поиск маршрута
+curl -X POST http://localhost:8080/api/v1/routes/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "moscow",
+    "to": "yakutsk",
+    "departure_date": "2025-06-20",
+    "passengers": 1
+  }'
+
+# Ответ: {"routes": [{"id": "route_abc123", ...}]}
+
+# 3. Создание бронирования (с токеном из шага 1)
+curl -X POST http://localhost:8080/api/v1/bookings \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGc..." \
+  -d '{
+    "route_id": "route_abc123",
+    "passenger": {
+      "first_name": "Иван",
+      "last_name": "Петров",
+      "middle_name": "Сергеевич",
+      "date_of_birth": "1990-05-15",
+      "passport_number": "1234 567890",
+      "email": "ivan@example.com",
+      "phone": "+79001234567"
+    },
+    "include_insurance": true,
+    "payment_method": "card"
+  }'
+
+# Ответ: {"id": "booking_xyz789", "status": "in_progress", ...}
+
+# 4. Проверка статуса бронирования
+curl -X GET http://localhost:8080/api/v1/bookings/booking_xyz789 \
+  -H "Authorization: Bearer eyJhbGc..."
+
+# 5. Просмотр моих маршрутов
+curl -X GET http://localhost:8080/api/my_routes \
+  -H "Authorization: Bearer eyJhbGc..."
+```
+
+### Use Case 2: Поиск города для автокомплита
+
+```bash
+# Пользователь вводит "як" в поле поиска
+curl -X GET "http://localhost:8080/api/v1/cities?name=як"
+
+# Ответ:
+# {
+#   "cities": [
+#     {"name": "Якутск", "latitude": 62.0272, "longitude": 129.7322},
+#     {"name": "Якутск (аэропорт)", "latitude": 62.0932, "longitude": 129.7708}
+#   ]
+# }
+```
+
+### Use Case 3: Отмена бронирования
+
+```bash
+curl -X POST http://localhost:8080/api/v1/bookings/booking_xyz789/cancel \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGc..." \
+  -d '{
+    "reason": "Изменились планы поездки, нужно перенести даты"
+  }'
+
+# Ответ: {"id": "booking_xyz789", "status": "cancelled", ...}
+```
+
+### Use Case 4: Вход существующего пользователя
+
+```bash
+curl -X POST http://localhost:8080/api/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "ivan@example.com",
+    "password": "SecurePass123"
+  }'
+
+# Ответ: {"token": "eyJhbGc...", "user": {...}}
+```
 
 ---
 
 ## Rate Limiting
 
-🚧 **Not implemented yet** (MVP)
+🚧 **Пока не реализовано** (MVP)
 
-For production:
-- 100 requests per minute per IP
-- 429 Too Many Requests response when exceeded
-
----
-
-## Versioning
-
-API version is included in the URL path: `/api/v1/...`
-
-Major version changes will be communicated via:
-- `X-API-Version` response header
-- Deprecation notices in response headers
+Для продакшена:
+- 100 запросов в минуту на IP
+- 429 Too Many Requests при превышении
 
 ---
 
-## Support
+## Версионирование
+
+Версия API включена в URL путь: `/api/v1/...`
+
+Изменения мажорной версии будут коммуницироваться через:
+- Заголовок ответа `X-API-Version`
+- Уведомления о deprecation в заголовках
+
+---
+
+## Техническая поддержка
 
 **Issues:** https://github.com/lenalink/backend/issues
 
-**Email:** support@lenalink.ru (for production)
+**Email:** support@lenalink.ru (для продакшена)
+
+---
+
+## Changelog
+
+### v0.5.0 (2025-11-27)
+- ✅ Добавлена аутентификация пользователей (JWT)
+- ✅ Добавлены эндпоинты регистрации и входа
+- ✅ Защищены эндпоинты бронирований
+- ✅ Добавлен эндпоинт `/api/my_routes`
+- ✅ Добавлен эндпоинт поиска городов `/api/v1/cities`
+- ✅ Добавлена поддержка YooKassa webhook
+- ✅ Исправлены все статусы бронирований
+- ✅ Обновлена документация с актуальными use case'ами
+
+### v0.4.0
+- ✅ Граф-алгоритм поиска маршрутов
+- ✅ Мультисегментное бронирование с ACID
+- ✅ Комиссионная модель
+- ✅ Опциональное страхование
+- ✅ Mock платежный шлюз
