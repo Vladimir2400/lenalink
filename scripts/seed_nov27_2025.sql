@@ -72,7 +72,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Маршрут 1: Москва (DME) → Якутск (прямой, утренний)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_msk_yks_morning_nov27', 'moscow', 'yakutsk',
  '2025-11-27 08:00:00+03', '2025-11-27 23:00:00+09', 28800000000000,
  32000.00, 92.00, ARRAY['air']::text[], NOW())
@@ -93,7 +93,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Маршрут 2: Москва (SVO) → Якутск (вечерний)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_msk_yks_evening_nov27', 'moscow', 'yakutsk',
  '2025-11-27 18:00:00+03', '2025-11-28 09:00:00+09', 28800000000000,
  28000.00, 90.00, ARRAY['air']::text[], NOW())
@@ -118,7 +118,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Обратный маршрут: Якутск → Москва (утро 27 ноября)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_yks_msk_morning_nov27', 'yakutsk', 'moscow',
  '2025-11-27 06:00:00+09', '2025-11-27 14:00:00+03', 28800000000000,
  34000.00, 91.00, ARRAY['air']::text[], NOW())
@@ -143,7 +143,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Якутск → Мирный (утро)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_yks_mirny_morning_nov27', 'yakutsk', 'mirny',
  '2025-11-27 09:00:00+09', '2025-11-27 10:30:00+09', 5400000000000,
  12000.00, 88.00, ARRAY['air']::text[], NOW())
@@ -164,7 +164,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Якутск → Мирный (вечер)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_yks_mirny_evening_nov27', 'yakutsk', 'mirny',
  '2025-11-27 17:00:00+09', '2025-11-27 18:30:00+09', 5400000000000,
  13500.00, 90.00, ARRAY['air']::text[], NOW())
@@ -185,7 +185,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Якутск → Нерюнгри
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_yks_ner_nov27', 'yakutsk', 'neryungri',
  '2025-11-27 10:00:00+09', '2025-11-27 11:30:00+09', 5400000000000,
  14000.00, 87.00, ARRAY['air']::text[], NOW())
@@ -206,7 +206,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Якутск → Удачный
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_yks_udachny_nov27', 'yakutsk', 'udachny',
  '2025-11-27 11:30:00+09', '2025-11-27 13:45:00+09', 8100000000000,
  16000.00, 85.00, ARRAY['air']::text[], NOW())
@@ -227,7 +227,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Якутск → Вилюйск
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_yks_vilyuysk_nov27', 'yakutsk', 'vilyuysk',
  '2025-11-27 14:00:00+09', '2025-11-27 15:40:00+09', 6000000000000,
  11000.00, 82.00, ARRAY['air']::text[], NOW())
@@ -248,7 +248,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Якутск → Тикси (Северный Ледовитый океан)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_yks_tiksi_nov27', 'yakutsk', 'tiksi',
  '2025-11-27 08:30:00+09', '2025-11-27 11:00:00+09', 9000000000000,
  22000.00, 78.00, ARRAY['air']::text[], NOW())
@@ -269,7 +269,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Якутск → Оймякон (Полюс холода)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_yks_oymyakon_nov27', 'yakutsk', 'oymyakon',
  '2025-11-27 07:00:00+09', '2025-11-27 09:30:00+09', 9000000000000,
  19000.00, 75.00, ARRAY['air']::text[], NOW())
@@ -294,7 +294,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Якутск → Покровск (пригород)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_yks_pokrovsk_bus_nov27', 'yakutsk', 'pokrovsk',
  '2025-11-27 08:00:00+09', '2025-11-27 10:30:00+09', 9000000000000,
  1200.00, 86.00, ARRAY['bus']::text[], NOW())
@@ -315,7 +315,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Якутск → Нерюнгри (автобус, дешевле авиа)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_yks_ner_bus_nov27', 'yakutsk', 'neryungri',
  '2025-11-27 09:00:00+09', '2025-11-27 19:00:00+09', 36000000000000,
  3500.00, 75.00, ARRAY['bus']::text[], NOW())
@@ -341,7 +341,7 @@ ON CONFLICT (id) DO UPDATE SET
 -- Москва → Олекминск (авиа + речной транспорт - зимой закрыто, только летом)
 -- Зимой: Москва → Якутск → Олекминск (автобус)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_msk_olek_combo_nov27', 'moscow', 'olekminsk',
  '2025-11-27 08:00:00+03', '2025-11-28 08:00:00+09', 64800000000000,
  35000.00, 85.00, ARRAY['air','bus']::text[], NOW())
@@ -371,7 +371,7 @@ ON CONFLICT (route_id, from_segment_id, to_segment_id) DO UPDATE SET
 
 -- Москва → Мирный (через Якутск с пересадкой)
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_msk_mirny_via_yks_nov27', 'moscow', 'mirny',
  '2025-11-27 08:00:00+03', '2025-11-28 01:30:00+09', 42300000000000,
  42000.00, 88.00, ARRAY['air']::text[], NOW())
@@ -405,7 +405,7 @@ ON CONFLICT (route_id, from_segment_id, to_segment_id) DO UPDATE SET
 
 -- Мирный → Якутск
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_mirny_yks_nov27', 'mirny', 'yakutsk',
  '2025-11-27 12:00:00+09', '2025-11-27 13:30:00+09', 5400000000000,
  12500.00, 89.00, ARRAY['air']::text[], NOW())
@@ -426,7 +426,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Нерюнгри → Якутск
 INSERT INTO routes (id, from_city, to_city, departure_time, arrival_time, total_duration,
-                   total_price, reliability_score, transport_types, created_at) VALUES
+                   total_price, reliability_score, transport_types, saved_at) VALUES
 ('route_ner_yks_nov27', 'neryungri', 'yakutsk',
  '2025-11-27 14:00:00+09', '2025-11-27 15:30:00+09', 5400000000000,
  14500.00, 86.00, ARRAY['air']::text[], NOW())
