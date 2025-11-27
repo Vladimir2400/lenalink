@@ -11,54 +11,54 @@ BEGIN;
 -- 1. ОСТАНОВКИ (ТРАНСПОРТНЫЕ УЗЛЫ)
 -- ============================================================================
 
-INSERT INTO stops (id, name, city, city_display_name, latitude, longitude, stop_type, country) VALUES
+INSERT INTO stops (id, name, city, city_display_name, latitude, longitude, stop_type)  VALUES
 -- Москва
-('moscow_dme', 'Domodedovo International Airport', 'moscow', 'Москва', 55.4088, 37.9063, 'airport', 'Russia'),
-('moscow_svo', 'Sheremetyevo International Airport', 'moscow', 'Москва', 55.9726, 37.4147, 'airport', 'Russia'),
-('moscow_vko', 'Vnukovo International Airport', 'moscow', 'Москва', 55.5914, 37.2615, 'airport', 'Russia'),
+('moscow_dme', 'Domodedovo International Airport', 'moscow', 'Москва', 55.4088, 37.9063, 'airport') ,
+('moscow_svo', 'Sheremetyevo International Airport', 'moscow', 'Москва', 55.9726, 37.4147, 'airport') ,
+('moscow_vko', 'Vnukovo International Airport', 'moscow', 'Москва', 55.5914, 37.2615, 'airport') ,
 
 -- Якутск (главный хаб)
-('yakutsk_yks', 'Yakutsk Airport (Platon Oyunsky)', 'yakutsk', 'Якутск', 62.0932, 129.7708, 'airport', 'Russia'),
-('yakutsk_port', 'Yakutsk River Port', 'yakutsk', 'Якутск', 62.0272, 129.7322, 'port', 'Russia'),
-('yakutsk_bus', 'Yakutsk Bus Terminal', 'yakutsk', 'Якутск', 62.0339, 129.7331, 'station', 'Russia'),
+('yakutsk_yks', 'Yakutsk Airport (Platon Oyunsky)', 'yakutsk', 'Якутск', 62.0932, 129.7708, 'airport') ,
+('yakutsk_port', 'Yakutsk River Port', 'yakutsk', 'Якутск', 62.0272, 129.7322, 'port') ,
+('yakutsk_bus', 'Yakutsk Bus Terminal', 'yakutsk', 'Якутск', 62.0339, 129.7331, 'station') ,
 
 -- Алмазные города
-('mirny_aprt', 'Mirny Airport', 'mirny', 'Мирный', 62.5347, 114.0389, 'airport', 'Russia'),
-('mirny_bus', 'Mirny Bus Terminal', 'mirny', 'Мирный', 62.5350, 114.0300, 'station', 'Russia'),
-('udachny_aprt', 'Udachny Airport', 'udachny', 'Удачный', 66.4000, 112.0333, 'airport', 'Russia'),
+('mirny_aprt', 'Mirny Airport', 'mirny', 'Мирный', 62.5347, 114.0389, 'airport') ,
+('mirny_bus', 'Mirny Bus Terminal', 'mirny', 'Мирный', 62.5350, 114.0300, 'station') ,
+('udachny_aprt', 'Udachny Airport', 'udachny', 'Удачный', 66.4000, 112.0333, 'airport') ,
 
 -- Нерюнгри (южная Якутия)
-('nerungri_aprt', 'Neryungri Airport', 'neryungri', 'Нерюнгри', 56.9139, 124.9144, 'airport', 'Russia'),
-('nerungri_bus', 'Neryungri Bus Terminal', 'neryungri', 'Нерюнгри', 56.6600, 124.7200, 'station', 'Russia'),
+('nerungri_aprt', 'Neryungri Airport', 'neryungri', 'Нерюнгри', 56.9139, 124.9144, 'airport') ,
+('nerungri_bus', 'Neryungri Bus Terminal', 'neryungri', 'Нерюнгри', 56.6600, 124.7200, 'station') ,
 
 -- Олекминск
-('olekminsk_port', 'Olekminsk River Port', 'olekminsk', 'Олекминск', 60.3733, 120.4272, 'port', 'Russia'),
-('olekminsk_aprt', 'Olekminsk Airstrip', 'olekminsk', 'Олекминск', 60.3733, 120.4272, 'airport', 'Russia'),
+('olekminsk_port', 'Olekminsk River Port', 'olekminsk', 'Олекминск', 60.3733, 120.4272, 'port') ,
+('olekminsk_aprt', 'Olekminsk Airstrip', 'olekminsk', 'Олекминск', 60.3733, 120.4272, 'airport') ,
 
 -- Ленск
-('lensky_port', 'Lensk River Port', 'lensky', 'Ленск', 60.7458, 114.8833, 'port', 'Russia'),
-('lensk_aprt', 'Lensk Airport', 'lensky', 'Ленск', 60.7458, 114.8833, 'airport', 'Russia'),
+('lensky_port', 'Lensk River Port', 'lensky', 'Ленск', 60.7458, 114.8833, 'port') ,
+('lensk_aprt', 'Lensk Airport', 'lensky', 'Ленск', 60.7458, 114.8833, 'airport') ,
 
 -- Покровск
-('pokrovsk_bus', 'Pokrovsk Bus Terminal', 'pokrovsk', 'Покровск', 61.4833, 129.1500, 'station', 'Russia'),
-('pokrovsk_port', 'Pokrovsk River Port', 'pokrovsk', 'Покровск', 61.4800, 129.1450, 'port', 'Russia'),
+('pokrovsk_bus', 'Pokrovsk Bus Terminal', 'pokrovsk', 'Покровск', 61.4833, 129.1500, 'station') ,
+('pokrovsk_port', 'Pokrovsk River Port', 'pokrovsk', 'Покровск', 61.4800, 129.1450, 'port') ,
 
 -- Северные города
-('tiksi_aprt', 'Tiksi Airport', 'tiksi', 'Тикси', 71.6977, 128.9031, 'airport', 'Russia'),
-('verkhoyansk_aprt', 'Verkhoyansk Airport', 'verkhoyansk', 'Верхоянск', 67.5447, 133.3953, 'airport', 'Russia'),
-('oymyakon_aprt', 'Oymyakon Airstrip', 'oymyakon', 'Оймякон', 63.4608, 142.7858, 'airport', 'Russia'),
+('tiksi_aprt', 'Tiksi Airport', 'tiksi', 'Тикси', 71.6977, 128.9031, 'airport') ,
+('verkhoyansk_aprt', 'Verkhoyansk Airport', 'verkhoyansk', 'Верхоянск', 67.5447, 133.3953, 'airport') ,
+('oymyakon_aprt', 'Oymyakon Airstrip', 'oymyakon', 'Оймякон', 63.4608, 142.7858, 'airport') ,
 
 -- Вилюйская группа
-('vilyuysk_aprt', 'Vilyuysk Airport', 'vilyuysk', 'Вилюйск', 63.7486, 121.5675, 'airport', 'Russia'),
-('vilyuysk_bus', 'Vilyuysk Bus Terminal', 'vilyuysk', 'Вилюйск', 63.7486, 121.5675, 'station', 'Russia'),
-('nyurba_aprt', 'Nyurba Airport', 'nyurba', 'Нюрба', 65.3875, 118.4778, 'airport', 'Russia'),
-('suntar_aprt', 'Suntar Airport', 'suntar', 'Сунтар', 62.1731, 117.6356, 'airport', 'Russia'),
+('vilyuysk_aprt', 'Vilyuysk Airport', 'vilyuysk', 'Вилюйск', 63.7486, 121.5675, 'airport') ,
+('vilyuysk_bus', 'Vilyuysk Bus Terminal', 'vilyuysk', 'Вилюйск', 63.7486, 121.5675, 'station') ,
+('nyurba_aprt', 'Nyurba Airport', 'nyurba', 'Нюрба', 65.3875, 118.4778, 'airport') ,
+('suntar_aprt', 'Suntar Airport', 'suntar', 'Сунтар', 62.1731, 117.6356, 'airport') ,
 
 -- ЖД (Амуро-Якутская магистраль)
-('nizhny_bestyakh_railway', 'Nizhny Bestyakh Railway Station', 'nizhny_bestyakh', 'Нижний Бестях', 61.8950, 129.9289, 'station', 'Russia'),
-('tommot_railway', 'Tommot Railway Station', 'tommot', 'Томмот', 58.9500, 126.2833, 'station', 'Russia'),
-('aldan_railway', 'Aldan Railway Station', 'aldan', 'Алдан', 58.6000, 125.3833, 'station', 'Russia'),
-('aldan_bus', 'Aldan Bus Terminal', 'aldan', 'Алдан', 58.6000, 125.3833, 'station', 'Russia')
+('nizhny_bestyakh_railway', 'Nizhny Bestyakh Railway Station', 'nizhny_bestyakh', 'Нижний Бестях', 61.8950, 129.9289, 'station') ,
+('tommot_railway', 'Tommot Railway Station', 'tommot', 'Томмот', 58.9500, 126.2833, 'station') ,
+('aldan_railway', 'Aldan Railway Station', 'aldan', 'Алдан', 58.6000, 125.3833, 'station') ,
+('aldan_bus', 'Aldan Bus Terminal', 'aldan', 'Алдан', 58.6000, 125.3833, 'station') 
 
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
