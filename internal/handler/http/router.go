@@ -46,10 +46,11 @@ func NewRouter(
 
 	// API routes (no version prefix for auth)
 	api := r.PathPrefix("/api").Subrouter()
+	auth := api.PathPrefix("/api").Subrouter()
 
 	// Authentication endpoints (no auth required)
-	api.HandleFunc("/register", authHandler.Register).Methods("POST")
-	api.HandleFunc("/login", authHandler.Login).Methods("POST")
+	auth.HandleFunc("/register", authHandler.Register).Methods("POST")
+	auth.HandleFunc("/login", authHandler.Login).Methods("POST")
 
 	// Protected endpoints (require authentication)
 	api.HandleFunc("/my_routes", middleware.AuthMiddleware(authService)(http.HandlerFunc(bookingHandler.GetMyRoutes)).ServeHTTP).Methods("GET")
