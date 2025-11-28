@@ -46,7 +46,7 @@ func NewRouter(
 
 	// API routes (no version prefix for auth)
 	api := r.PathPrefix("/api").Subrouter()
-	auth := api.PathPrefix("/api").Subrouter()
+	auth := api.PathPrefix("/auth").Subrouter()
 
 	// Authentication endpoints (no auth required)
 	auth.HandleFunc("/register", authHandler.Register).Methods("POST")
