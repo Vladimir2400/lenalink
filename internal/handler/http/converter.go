@@ -69,7 +69,7 @@ func ToRouteResponse(route *domain.Route, routeType string) dto.RouteResponse {
 
 // ToBookedSegmentResponse converts domain.BookedSegment to DTO
 func ToBookedSegmentResponse(booked *domain.BookedSegment) dto.BookedSegmentResponse {
-	return dto.BookedSegmentResponse{
+	resp := dto.BookedSegmentResponse{
 		ID:                 booked.ID,
 		SegmentID:          booked.SegmentID,
 		Provider:           booked.Provider,
@@ -84,7 +84,15 @@ func ToBookedSegmentResponse(booked *domain.BookedSegment) dto.BookedSegmentResp
 		TotalPrice:         booked.TotalPrice,
 		BookingStatus:      string(booked.BookingStatus),
 		ProviderBookingRef: booked.ProviderBookingRef,
+		SeatPrice:          booked.SeatPrice,
 	}
+
+	// Add seat type if present
+	if booked.SeatType != nil {
+		resp.SeatType = string(*booked.SeatType)
+	}
+
+	return resp
 }
 
 // ToPaymentResponse converts domain.Payment to DTO
@@ -118,20 +126,22 @@ func ToBookingResponse(booking *domain.Booking) dto.BookingResponse {
 	}
 
 	return dto.BookingResponse{
-		ID:               booking.ID,
-		RouteID:          booking.RouteID,
-		Status:           string(booking.Status),
-		Passenger:        ToPassengerResponse(&booking.Passenger),
-		Segments:         segments,
-		TotalPrice:       booking.TotalPrice,
-		TotalCommission:  booking.TotalCommission,
-		InsurancePremium: booking.InsurancePremium,
-		GrandTotal:       booking.GrandTotal,
-		IncludeInsurance: booking.IncludeInsurance,
-		Payment:          ToPaymentResponse(booking.Payment),
-		CreatedAt:        booking.CreatedAt,
-		ConfirmedAt:      booking.ConfirmedAt,
-		CancelledAt:      booking.CancelledAt,
+		ID:                 booking.ID,
+		RouteID:            booking.RouteID,
+		Status:             string(booking.Status),
+		Passenger:          ToPassengerResponse(&booking.Passenger),
+		Segments:           segments,
+		TotalPrice:         booking.TotalPrice,
+		TotalSeatsPrice:    booking.TotalSeatsPrice,
+		Tariff:             string(booking.Tariff),
+		TariffPrice:        booking.TariffPrice,
+		InsurancePremium:   booking.InsurancePremium,
+		GrandTotal:         booking.GrandTotal,
+		IncludeInsurance:   booking.IncludeInsurance,
+		Payment:            ToPaymentResponse(booking.Payment),
+		CreatedAt:          booking.CreatedAt,
+		ConfirmedAt:        booking.ConfirmedAt,
+		CancelledAt:        booking.CancelledAt,
 		CancellationReason: booking.CancellationReason,
 	}
 }

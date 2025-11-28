@@ -62,6 +62,36 @@ func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse tariff
+	tariff := domain.Tariff(req.Tariff)
+	validTariffs := map[domain.Tariff]bool{
+		domain.Tariff1: true,
+		domain.Tariff2: true,
+		domain.Tariff3: true,
+		domain.Tariff4: true,
+	}
+	if !validTariffs[tariff] {
+		h.errorHandler.RespondWithError(w, http.StatusBadRequest, "INVALID_TARIFF", "Tariff must be 'tarif1', 'tarif2', 'tarif3', or 'tarif4'")
+		return
+	}
+
+	// Parse seat selections
+	seatSelections := make(map[int]domain.SeatType)
+	for _, seatReq := range req.SeatSelections {
+		seatType := domain.SeatType(seatReq.SeatType)
+		validSeats := map[domain.SeatType]bool{
+			domain.SeatRandom:       true,
+			domain.SeatWindow:       true,
+			domain.SeatAisle:        true,
+			domain.SeatExtraLegroom: true,
+		}
+		if !validSeats[seatType] {
+			h.errorHandler.RespondWithError(w, http.StatusBadRequest, "INVALID_SEAT_TYPE", "Seat type must be 'random', 'window', 'aisle', or 'extra_legroom'")
+			return
+		}
+		seatSelections[seatReq.SegmentIndex] = seatType
+	}
+
 	// Extract user_id from context (set by auth middleware)
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
@@ -77,6 +107,8 @@ func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 		passenger,
 		req.IncludeInsurance,
 		paymentMethod,
+		tariff,
+		seatSelections,
 	)
 	if err != nil {
 		h.errorHandler.RespondWithDomainError(w, err)

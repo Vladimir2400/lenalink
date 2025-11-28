@@ -8,6 +8,7 @@ import (
 
 	"github.com/lenalink/backend/internal/domain"
 	"github.com/lenalink/backend/internal/repository"
+	"github.com/lenalink/backend/pkg/utils"
 )
 
 // BookingRepository implements repository.BookingRepository interface for PostgreSQL
@@ -23,8 +24,8 @@ func NewBookingRepository(db *Database) repository.BookingRepository {
 // FindByID retrieves a booking with all details
 func (r *BookingRepository) FindByID(ctx context.Context, id string) (*domain.Booking, error) {
 	const query = `
-		SELECT id, user_id, route_id, status, total_price, total_commission, grand_total,
-		       insurance_premium, include_insurance, created_at, updated_at,
+		SELECT id, user_id, route_id, status, total_price, grand_total,
+		       insurance_premium, include_insurance, tariff, tariff_price, created_at, updated_at,
 		       confirmed_at, cancelled_at, cancellation_reason,
 		       passenger_first_name, passenger_last_name, passenger_middle_name,
 		       passenger_date_of_birth, passenger_passport_number,
@@ -44,10 +45,11 @@ func (r *BookingRepository) FindByID(ctx context.Context, id string) (*domain.Bo
 		&booking.RouteID,
 		&booking.Status,
 		&booking.TotalPrice,
-		&booking.TotalCommission,
 		&booking.GrandTotal,
 		&booking.InsurancePremium,
 		&booking.IncludeInsurance,
+		&booking.Tariff,
+		&booking.TariffPrice,
 		&booking.CreatedAt,
 		&booking.UpdatedAt,
 		&confirmedAt,
@@ -102,8 +104,8 @@ func (r *BookingRepository) FindByID(ctx context.Context, id string) (*domain.Bo
 // FindAll retrieves all bookings
 func (r *BookingRepository) FindAll(ctx context.Context) ([]domain.Booking, error) {
 	const query = `
-		SELECT id, route_id, status, total_price, total_commission, grand_total,
-		       insurance_premium, include_insurance, created_at, updated_at,
+		SELECT id, route_id, status, total_price, grand_total,
+		       insurance_premium, include_insurance, tariff, tariff_price, created_at, updated_at,
 		       confirmed_at, cancelled_at, cancellation_reason,
 		       passenger_first_name, passenger_last_name, passenger_middle_name,
 		       passenger_date_of_birth, passenger_passport_number,
@@ -130,10 +132,11 @@ func (r *BookingRepository) FindAll(ctx context.Context) ([]domain.Booking, erro
 			&booking.RouteID,
 			&booking.Status,
 			&booking.TotalPrice,
-			&booking.TotalCommission,
 			&booking.GrandTotal,
 			&booking.InsurancePremium,
 			&booking.IncludeInsurance,
+			&booking.Tariff,
+			&booking.TariffPrice,
 			&booking.CreatedAt,
 			&booking.UpdatedAt,
 			&confirmedAt,
@@ -172,8 +175,8 @@ func (r *BookingRepository) FindAll(ctx context.Context) ([]domain.Booking, erro
 // FindByPassenger finds bookings by passenger email
 func (r *BookingRepository) FindByPassenger(ctx context.Context, email string) ([]domain.Booking, error) {
 	const query = `
-		SELECT id, route_id, status, total_price, total_commission, grand_total,
-		       insurance_premium, include_insurance, created_at, updated_at,
+		SELECT id, route_id, status, total_price, grand_total,
+		       insurance_premium, include_insurance, tariff, tariff_price, created_at, updated_at,
 		       confirmed_at, cancelled_at, cancellation_reason,
 		       passenger_first_name, passenger_last_name, passenger_middle_name,
 		       passenger_date_of_birth, passenger_passport_number,
@@ -200,10 +203,11 @@ func (r *BookingRepository) FindByPassenger(ctx context.Context, email string) (
 			&booking.RouteID,
 			&booking.Status,
 			&booking.TotalPrice,
-			&booking.TotalCommission,
 			&booking.GrandTotal,
 			&booking.InsurancePremium,
 			&booking.IncludeInsurance,
+			&booking.Tariff,
+			&booking.TariffPrice,
 			&booking.CreatedAt,
 			&booking.UpdatedAt,
 			&confirmedAt,
@@ -242,8 +246,8 @@ func (r *BookingRepository) FindByPassenger(ctx context.Context, email string) (
 // FindByStatus finds bookings by status
 func (r *BookingRepository) FindByStatus(ctx context.Context, status domain.BookingStatus) ([]domain.Booking, error) {
 	const query = `
-		SELECT id, route_id, status, total_price, total_commission, grand_total,
-		       insurance_premium, include_insurance, created_at, updated_at,
+		SELECT id, route_id, status, total_price, grand_total,
+		       insurance_premium, include_insurance, tariff, tariff_price, created_at, updated_at,
 		       confirmed_at, cancelled_at, cancellation_reason,
 		       passenger_first_name, passenger_last_name, passenger_middle_name,
 		       passenger_date_of_birth, passenger_passport_number,
@@ -270,10 +274,11 @@ func (r *BookingRepository) FindByStatus(ctx context.Context, status domain.Book
 			&booking.RouteID,
 			&booking.Status,
 			&booking.TotalPrice,
-			&booking.TotalCommission,
 			&booking.GrandTotal,
 			&booking.InsurancePremium,
 			&booking.IncludeInsurance,
+			&booking.Tariff,
+			&booking.TariffPrice,
 			&booking.CreatedAt,
 			&booking.UpdatedAt,
 			&confirmedAt,
@@ -313,15 +318,15 @@ func (r *BookingRepository) FindByStatus(ctx context.Context, status domain.Book
 func (r *BookingRepository) Save(ctx context.Context, booking *domain.Booking) error {
 	const query = `
 		INSERT INTO bookings (
-			id, user_id, route_id, status, total_price, total_commission, grand_total,
-			insurance_premium, include_insurance, created_at, updated_at,
+			id, user_id, route_id, status, total_price, grand_total,
+			insurance_premium, include_insurance, tariff, tariff_price, created_at, updated_at,
 			confirmed_at, cancelled_at, cancellation_reason,
 			passenger_first_name, passenger_last_name, passenger_middle_name,
 			passenger_date_of_birth, passenger_passport_number,
 			passenger_email, passenger_phone
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-			$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+			$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
 		)
 	`
 
@@ -336,10 +341,11 @@ func (r *BookingRepository) Save(ctx context.Context, booking *domain.Booking) e
 		booking.RouteID,
 		string(booking.Status),
 		booking.TotalPrice,
-		booking.TotalCommission,
 		booking.GrandTotal,
 		booking.InsurancePremium,
 		booking.IncludeInsurance,
+		string(booking.Tariff),
+		booking.TariffPrice,
 		booking.CreatedAt,
 		booking.UpdatedAt,
 		booking.ConfirmedAt,
@@ -496,10 +502,25 @@ func (r *BookingRepository) fetchBookedSegments(ctx context.Context, booking *do
 			segment.ProviderBookingRef = providerRef.String
 		}
 
+		// Fetch seat selection if exists
+		if err := r.fetchSeatSelection(ctx, &segment); err != nil {
+			return err
+		}
+
 		booking.Segments = append(booking.Segments, segment)
 	}
 
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	// Calculate total seats price
+	booking.TotalSeatsPrice = 0
+	for _, seg := range booking.Segments {
+		booking.TotalSeatsPrice += seg.SeatPrice
+	}
+
+	return nil
 }
 
 func (r *BookingRepository) fetchPayment(ctx context.Context, booking *domain.Booking) error {
@@ -551,8 +572,37 @@ func (r *BookingRepository) fetchPayment(ctx context.Context, booking *domain.Bo
 	return nil
 }
 
-func (r *BookingRepository) saveBookedSegments(ctx context.Context, booking *domain.Booking) error {
+func (r *BookingRepository) fetchSeatSelection(ctx context.Context, segment *domain.BookedSegment) error {
 	const query = `
+		SELECT seat_type, seat_price
+		FROM booked_segment_seats
+		WHERE booked_segment_id = $1
+		LIMIT 1
+	`
+
+	var seatTypeStr string
+	var seatPrice float64
+
+	err := r.db.db.QueryRowContext(ctx, query, segment.ID).Scan(&seatTypeStr, &seatPrice)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No seat selection - this is OK
+			segment.SeatPrice = 0
+			return nil
+		}
+		return fmt.Errorf("error querying seat selection: %w", err)
+	}
+
+	// Set seat type and price
+	seatType := domain.SeatType(seatTypeStr)
+	segment.SeatType = &seatType
+	segment.SeatPrice = seatPrice
+
+	return nil
+}
+
+func (r *BookingRepository) saveBookedSegments(ctx context.Context, booking *domain.Booking) error {
+	const segmentQuery = `
 		INSERT INTO booked_segments (
 			id, booking_id, segment_id, provider, transport_type,
 			from_stop_id, to_stop_id, departure_time, arrival_time,
@@ -563,8 +613,17 @@ func (r *BookingRepository) saveBookedSegments(ctx context.Context, booking *dom
 		)
 	`
 
+	const seatQuery = `
+		INSERT INTO booked_segment_seats (
+			id, booked_segment_id, seat_type, seat_price, created_at
+		) VALUES (
+			$1, $2, $3, $4, $5
+		)
+	`
+
 	for i, segment := range booking.Segments {
-		_, err := r.db.db.ExecContext(ctx, query,
+		// Save booked segment
+		_, err := r.db.db.ExecContext(ctx, segmentQuery,
 			segment.ID,
 			booking.ID,
 			segment.SegmentID,
@@ -584,6 +643,21 @@ func (r *BookingRepository) saveBookedSegments(ctx context.Context, booking *dom
 		)
 		if err != nil {
 			return fmt.Errorf("error saving booked segment: %w", err)
+		}
+
+		// Save seat selection if present (only for air segments)
+		if segment.SeatType != nil {
+			seatID := utils.GenerateID()
+			_, err := r.db.db.ExecContext(ctx, seatQuery,
+				seatID,
+				segment.ID,
+				string(*segment.SeatType),
+				segment.SeatPrice,
+				time.Now(),
+			)
+			if err != nil {
+				return fmt.Errorf("error saving seat selection: %w", err)
+			}
 		}
 	}
 
@@ -646,7 +720,7 @@ func (r *BookingRepository) updatePayment(ctx context.Context, payment *domain.P
 // FindByUserID finds bookings by user ID
 func (r *BookingRepository) FindByUserID(ctx context.Context, userID string) ([]domain.Booking, error) {
 	const query = `
-		SELECT id, user_id, route_id, status, total_price, total_commission, grand_total,
+		SELECT id, user_id, route_id, status, total_price, grand_total,
 		       insurance_premium, include_insurance, created_at, updated_at,
 		       confirmed_at, cancelled_at, cancellation_reason,
 		       passenger_first_name, passenger_last_name, passenger_middle_name,
@@ -676,7 +750,6 @@ func (r *BookingRepository) FindByUserID(ctx context.Context, userID string) ([]
 			&booking.RouteID,
 			&booking.Status,
 			&booking.TotalPrice,
-			&booking.TotalCommission,
 			&booking.GrandTotal,
 			&booking.InsurancePremium,
 			&booking.IncludeInsurance,

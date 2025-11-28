@@ -35,6 +35,42 @@ const (
 	PaymentSberPay    PaymentMethod = "sberpay"
 )
 
+// Tariff represents tariff type
+type Tariff string
+
+const (
+	Tariff1 Tariff = "tarif1" // 0 ₽
+	Tariff2 Tariff = "tarif2" // 2244 ₽
+	Tariff3 Tariff = "tarif3" // 4244 ₽
+	Tariff4 Tariff = "tarif4" // 6244 ₽
+)
+
+// TariffPrices maps tariff types to their prices
+var TariffPrices = map[Tariff]float64{
+	Tariff1: 0,
+	Tariff2: 2244,
+	Tariff3: 4244,
+	Tariff4: 6244,
+}
+
+// SeatType represents seat selection type for air segments
+type SeatType string
+
+const (
+	SeatRandom       SeatType = "random"        // 0 ₽ (random selection)
+	SeatWindow       SeatType = "window"        // 3000 ₽
+	SeatAisle        SeatType = "aisle"         // 2300 ₽
+	SeatExtraLegroom SeatType = "extra_legroom" // 7900 ₽
+)
+
+// SeatPrices maps seat types to their prices
+var SeatPrices = map[SeatType]float64{
+	SeatRandom:       0,
+	SeatWindow:       3000,
+	SeatAisle:        2300,
+	SeatExtraLegroom: 7900,
+}
+
 // Passenger represents a passenger
 type Passenger struct {
 	FirstName      string    `json:"first_name"`
@@ -48,20 +84,22 @@ type Passenger struct {
 
 // BookedSegment represents a single booked segment in a multi-segment journey
 type BookedSegment struct {
-	ID              string        `json:"id"`
-	SegmentID       string        `json:"segment_id"`       // Reference to original segment
-	Provider        string        `json:"provider"`         // Provider who issued ticket
-	TransportType   TransportType `json:"transport_type"`
-	From            Stop          `json:"from"`
-	To              Stop          `json:"to"`
-	DepartureTime   time.Time     `json:"departure_time"`
-	ArrivalTime     time.Time     `json:"arrival_time"`
-	TicketNumber    string        `json:"ticket_number"`    // Ticket issued by provider
-	Price           float64       `json:"price"`            // Provider's price
-	Commission      float64       `json:"commission"`       // Our markup
-	TotalPrice      float64       `json:"total_price"`      // price + commission
-	BookingStatus   BookingStatus `json:"booking_status"`
-	ProviderBookingRef string     `json:"provider_booking_ref"` // Provider's booking reference
+	ID                 string        `json:"id"`
+	SegmentID          string        `json:"segment_id"`            // Reference to original segment
+	Provider           string        `json:"provider"`              // Provider who issued ticket
+	TransportType      TransportType `json:"transport_type"`
+	From               Stop          `json:"from"`
+	To                 Stop          `json:"to"`
+	DepartureTime      time.Time     `json:"departure_time"`
+	ArrivalTime        time.Time     `json:"arrival_time"`
+	TicketNumber       string        `json:"ticket_number"`         // Ticket issued by provider
+	Price              float64       `json:"price"`                 // Provider's price
+	Commission         float64       `json:"commission"`            // Our markup
+	TotalPrice         float64       `json:"total_price"`           // price + commission
+	BookingStatus      BookingStatus `json:"booking_status"`
+	ProviderBookingRef string        `json:"provider_booking_ref"`  // Provider's booking reference
+	SeatType           *SeatType     `json:"seat_type,omitempty"`   // Seat selection (only for air)
+	SeatPrice          float64       `json:"seat_price,omitempty"`  // Seat price (0 for non-air or random)
 }
 
 // Payment represents a payment transaction
@@ -86,9 +124,11 @@ type Booking struct {
 	RouteID            string          `json:"route_id"`
 	Passenger          Passenger       `json:"passenger"`
 	Segments           []BookedSegment `json:"segments"`
-	TotalPrice         float64         `json:"total_price"`        // Sum of all segment prices
-	TotalCommission    float64         `json:"total_commission"`   // Sum of all commissions
-	GrandTotal         float64         `json:"grand_total"`        // totalPrice + totalCommission
+	TotalPrice         float64         `json:"total_price"`         // Sum of all segment prices
+	TotalSeatsPrice    float64         `json:"total_seats_price"`   // Sum of all seat prices
+	Tariff             Tariff          `json:"tariff"`              // Selected tariff
+	TariffPrice        float64         `json:"tariff_price"`        // Tariff price
+	GrandTotal         float64         `json:"grand_total"`         // totalPrice + tariff + seats + insurance
 	InsurancePremium   float64         `json:"insurance_premium,omitempty"`
 	IncludeInsurance   bool            `json:"include_insurance"`
 	Status             BookingStatus   `json:"status"`
@@ -103,9 +143,15 @@ type Booking struct {
 // AddSegment adds a booked segment to the booking
 func (b *Booking) AddSegment(segment BookedSegment) {
 	b.Segments = append(b.Segments, segment)
-	b.TotalPrice += segment.Price
-	b.TotalCommission += segment.Commission
-	b.GrandTotal = b.TotalPrice + b.TotalCommission
+	// Use segment.TotalPrice (base price + commission) so booking total already includes commission
+	b.TotalPrice += segment.TotalPrice
+	b.TotalSeatsPrice += segment.SeatPrice
+	b.RecalculateGrandTotal()
+}
+
+// RecalculateGrandTotal recalculates the grand total
+func (b *Booking) RecalculateGrandTotal() {
+	b.GrandTotal = b.TotalPrice + b.TariffPrice + b.TotalSeatsPrice
 	if b.IncludeInsurance {
 		b.GrandTotal += b.InsurancePremium
 	}

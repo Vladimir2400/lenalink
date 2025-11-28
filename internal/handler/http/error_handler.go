@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/lenalink/backend/internal/domain"
@@ -67,6 +68,8 @@ func (eh *ErrorHandler) MapDomainErrorToHTTP(err error) (int, string, string) {
 
 // RespondWithDomainError handles domain errors and sends appropriate HTTP response
 func (eh *ErrorHandler) RespondWithDomainError(w http.ResponseWriter, err error) {
+	// Log the actual error for debugging
+	fmt.Printf("🚨 ERROR: %v\n", err)
 	statusCode, code, message := eh.MapDomainErrorToHTTP(err)
 	eh.RespondWithError(w, statusCode, code, message)
 }

@@ -95,6 +95,34 @@ func (v *Validator) ValidateCreateBookingRequest(req *dto.CreateBookingRequest) 
 		return errors.New("'payment_method' must be one of: card, yookassa, cloudpay, sberpay")
 	}
 
+	// Validate tariff
+	validTariffs := map[string]bool{
+		"tarif1": true,
+		"tarif2": true,
+		"tarif3": true,
+		"tarif4": true,
+	}
+
+	if !validTariffs[req.Tariff] {
+		return errors.New("'tariff' must be one of: tarif1, tarif2, tarif3, tarif4")
+	}
+
+	// Validate seat selections
+	for _, seat := range req.SeatSelections {
+		if seat.SegmentIndex < 0 {
+			return errors.New("'segment_index' must be >= 0")
+		}
+		validSeatTypes := map[string]bool{
+			"random":        true,
+			"window":        true,
+			"aisle":         true,
+			"extra_legroom": true,
+		}
+		if !validSeatTypes[seat.SeatType] {
+			return errors.New("'seat_type' must be one of: random, window, aisle, extra_legroom")
+		}
+	}
+
 	return nil
 }
 

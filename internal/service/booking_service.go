@@ -46,7 +46,7 @@ func NewBookingService(
 }
 
 // CreateBooking creates a multi-segment booking with ACID transaction
-func (bs *BookingService) CreateBooking(ctx context.Context, userID, routeID string, passenger domain.Passenger, includeInsurance bool, paymentMethod domain.PaymentMethod) (*domain.Booking, error) {
+func (bs *BookingService) CreateBooking(ctx context.Context, userID, routeID string, passenger domain.Passenger, includeInsurance bool, paymentMethod domain.PaymentMethod, tariff domain.Tariff, seatSelections map[int]domain.SeatType) (*domain.Booking, error) {
 	// 1. Fetch route
 	route, err := bs.routeRepo.FindByID(ctx, routeID)
 	if err != nil {
@@ -57,6 +57,26 @@ func (bs *BookingService) CreateBooking(ctx context.Context, userID, routeID str
 		return nil, fmt.Errorf("route has no segments")
 	}
 
+	// Validate seat selections - must match air segments
+	for segmentIdx, seatType := range seatSelections {
+		if segmentIdx >= len(route.Segments) {
+			return nil, fmt.Errorf("invalid seat selection: segment index %d out of range", segmentIdx)
+		}
+		if route.Segments[segmentIdx].TransportType != domain.TransportAir {
+			return nil, fmt.Errorf("seat selection only allowed for air segments (segment %d is %s)", segmentIdx, route.Segments[segmentIdx].TransportType)
+		}
+		// Validate seat type
+		if _, ok := domain.SeatPrices[seatType]; !ok {
+			return nil, fmt.Errorf("invalid seat type: %s", seatType)
+		}
+	}
+
+	// Validate tariff
+	tariffPrice, ok := domain.TariffPrices[tariff]
+	if !ok {
+		return nil, fmt.Errorf("invalid tariff: %s", tariff)
+	}
+
 	// 2. Create booking
 	booking := &domain.Booking{
 		ID:               utils.GenerateID(),
@@ -65,6 +85,8 @@ func (bs *BookingService) CreateBooking(ctx context.Context, userID, routeID str
 		Passenger:        passenger,
 		Segments:         make([]domain.BookedSegment, 0, len(route.Segments)),
 		IncludeInsurance: includeInsurance,
+		Tariff:           tariff,
+		TariffPrice:      tariffPrice,
 		Status:           domain.BookingPending,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
@@ -125,6 +147,15 @@ func (bs *BookingService) CreateBooking(ctx context.Context, userID, routeID str
 			TotalPrice:         totalPrice,
 			BookingStatus:      domain.BookingInProgress,
 			ProviderBookingRef: bookingRef,
+			SeatPrice:          0, // Default to 0
+		}
+
+		// Add seat selection if this is an air segment
+		if segment.TransportType == domain.TransportAir {
+			if seatType, ok := seatSelections[i]; ok {
+				bookedSegment.SeatType = &seatType
+				bookedSegment.SeatPrice = domain.SeatPrices[seatType]
+			}
 		}
 
 		bookedSegments = append(bookedSegments, bookedSegment)

@@ -2,12 +2,20 @@ package dto
 
 import "time"
 
+// SeatSelectionRequest represents seat selection for an air segment
+type SeatSelectionRequest struct {
+	SegmentIndex int    `json:"segment_index" validate:"required,gte=0"` // 0-based index of segment in route
+	SeatType     string `json:"seat_type" validate:"required,oneof=random window aisle extra_legroom"`
+}
+
 // CreateBookingRequest represents a request to create a booking
 type CreateBookingRequest struct {
-	RouteID          string            `json:"route_id" validate:"required"`
-	Passenger        PassengerRequest  `json:"passenger" validate:"required"`
-	IncludeInsurance bool              `json:"include_insurance"`
-	PaymentMethod    string            `json:"payment_method" validate:"required,oneof=card yookassa cloudpay sberpay"`
+	RouteID          string                 `json:"route_id" validate:"required"`
+	Passenger        PassengerRequest       `json:"passenger" validate:"required"`
+	IncludeInsurance bool                   `json:"include_insurance"`
+	PaymentMethod    string                 `json:"payment_method" validate:"required,oneof=card yookassa cloudpay sberpay"`
+	Tariff           string                 `json:"tariff" validate:"required,oneof=tarif1 tarif2 tarif3 tarif4"`
+	SeatSelections   []SeatSelectionRequest `json:"seat_selections,omitempty"` // Only for air segments
 }
 
 // PassengerRequest represents passenger information
@@ -29,7 +37,9 @@ type BookingResponse struct {
 	Passenger        PassengerResponse       `json:"passenger"`
 	Segments         []BookedSegmentResponse `json:"segments"`
 	TotalPrice       float64                 `json:"total_price"`
-	TotalCommission  float64                 `json:"total_commission"`
+	TotalSeatsPrice  float64                 `json:"total_seats_price"`
+	Tariff           string                  `json:"tariff"`
+	TariffPrice      float64                 `json:"tariff_price"`
 	InsurancePremium float64                 `json:"insurance_premium,omitempty"`
 	GrandTotal       float64                 `json:"grand_total"`
 	IncludeInsurance bool                    `json:"include_insurance"`
@@ -65,6 +75,8 @@ type BookedSegmentResponse struct {
 	TotalPrice         float64      `json:"total_price"`
 	BookingStatus      string       `json:"booking_status"` // confirmed, failed, cancelled
 	ProviderBookingRef string       `json:"provider_booking_ref,omitempty"`
+	SeatType           string       `json:"seat_type,omitempty"`  // Only for air segments
+	SeatPrice          float64      `json:"seat_price,omitempty"` // Price of selected seat
 }
 
 // PaymentResponse represents payment information
